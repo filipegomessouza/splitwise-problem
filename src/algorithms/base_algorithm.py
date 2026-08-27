@@ -2,5 +2,5 @@ from abc import ABC, abstractmethod
 
 class BaseAlgorithm(ABC):
     @abstractmethod
-    def run(self):
+    def run(self) -> int:
         pass
