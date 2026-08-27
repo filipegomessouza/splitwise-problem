@@ -39,7 +39,7 @@ class GreedyAlgorithm(BaseAlgorithm):
 
         direct_transactions = 0
 
-        for value in list(counter):
+        for value in counter:
             if value > 0 and -value in counter:
                 pairs = min(counter[value], counter[-value])
                 direct_transactions += pairs
