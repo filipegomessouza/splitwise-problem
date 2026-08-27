@@ -7,4 +7,6 @@ instance = instance_reader.read("instances/10.txt")
 
 greedy_algorithm = GreedyAlgorithm(instance)
 solution = greedy_algorithm.run()
+solution.validate()
+
 print(solution.describe())
