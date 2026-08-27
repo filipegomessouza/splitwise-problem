@@ -3,14 +3,16 @@ from typing import Optional
 import random
 
 class InstanceFactory:
-    def __init__(self, min_value: int, max_value: int, size: int, seed: Optional[int] = None):
-        self._min_value = min_value
+    def __init__(self, max_value: int, size: int, seed: Optional[int] = None):
         self._max_value = max_value
         self._size = size
         self._rng = random.Random(seed)
 
     def create(self) -> Instance:
-        return Instance([self._rng.randint(self._min_value, self._max_value) for _ in range(self._size)])
+        values = [self._rng.randint(-self._max_value, self._max_value) for _ in range(self._size - 1)]
+        values.append(-sum(values))
+
+        return Instance(values)
 
     def create_as_txt(self, file_path: str) -> None:
         instance = self.create()
