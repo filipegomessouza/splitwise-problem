@@ -1,4 +1,4 @@
-from src.instance.instance import Instance
+import os
 from src.instance.instance_factory import InstanceFactory
 
 class InstanceSeeder:
@@ -8,5 +8,5 @@ class InstanceSeeder:
         SIZES = [10, 100, 1000, 10000]
 
         for size in SIZES:
-            instance_factory = InstanceFactory(max_value=MAX_VALUE, size=size, seed=SEED)
-            instance_factory.create_as_txt(f'instances/{size}.txt')
+            instance_factory = InstanceFactory(max_value=MAX_VALUE, size=size, seed=SEED + size)
+            instance_factory.create_as_txt(os.path.join('instances', f'{size}.txt'))
