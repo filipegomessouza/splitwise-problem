@@ -35,7 +35,7 @@ class GreedyAlgorithm(BaseAlgorithm):
             elif owed < due:
                 heapq.heappush(receivers, (-(due - owed), receiver))
 
-        return Solution(people=len(self._instance.contributions), transactions=transactions)
+        return Solution(instance=self._instance, transactions=transactions)
 
     def get_balances_without_direct_transactions(self) -> Tuple[TransactionList, List[Tuple[int, int]]]:
         people_by_balance: Dict[int, List[int]] = {}

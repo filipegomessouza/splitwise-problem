@@ -1,3 +1,10 @@
-from src.instance.instance_seeder import InstanceSeeder
+from src.instance.instance_reader import InstanceReader
+from src.algorithms.greedy_algorithm import GreedyAlgorithm
 
-InstanceSeeder().seed()
+instance_reader = InstanceReader()
+
+instance = instance_reader.read("instances/10.txt")
+
+greedy_algorithm = GreedyAlgorithm(instance)
+solution = greedy_algorithm.run()
+print(solution.describe())
