@@ -16,10 +16,10 @@ class InstanceFactory:
         self._rng = random.Random(seed)
 
     def create(self) -> Instance:
-        values = [self._rng.randint(-self._max_value, self._max_value) for _ in range(self._size)]
-        self._balance(values)
+        contributions = [self._rng.randint(0, self._max_value) for _ in range(self._size)]
+        self._align_mean(contributions)
 
-        return Instance(values)
+        return Instance(contributions)
 
     def create_as_txt(self, file_path: str) -> None:
         instance = self.create()
@@ -30,27 +30,21 @@ class InstanceFactory:
             os.makedirs(directory, exist_ok=True)
 
         with open(file_path, 'w') as file:
-            for value in instance.values:
-                file.write(f"{value}\n")
+            for contribution in instance.contributions:
+                file.write(f"{contribution}\n")
 
-    def _balance(self, values: List[int]) -> None:
-        """Spread the residual over the values so the sum is 0 and every value stays in range."""
-        residual = sum(values)
-        indices = list(range(len(values)))
+    def _align_mean(self, contributions: List[int]) -> None:
+        residual = sum(contributions) % len(contributions)
+        indices = list(range(len(contributions)))
 
         while residual != 0:
             self._rng.shuffle(indices)
-            share = max(1, abs(residual) // len(indices))
+            share = max(1, residual // len(indices))
 
             for index in indices:
                 if residual == 0:
                     break
 
-                if residual > 0:
-                    delta = min(share, residual, values[index] + self._max_value)
-                    values[index] -= delta
-                    residual -= delta
-                else:
-                    delta = min(share, -residual, self._max_value - values[index])
-                    values[index] += delta
-                    residual += delta
+                delta = min(share, residual, contributions[index])
+                contributions[index] -= delta
+                residual -= delta
