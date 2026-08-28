@@ -1,1 +1,2 @@
 graphviz==0.21
+gurobipy==13.0.3
