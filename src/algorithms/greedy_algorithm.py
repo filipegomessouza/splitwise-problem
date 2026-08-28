@@ -1,16 +1,17 @@
 from typing import Dict, List, Tuple
 import heapq
 from src.algorithms.base_algorithm import BaseAlgorithm
+from src.algorithms.run_result import RunResult
 from src.algorithms.solution import Solution
 from src.constants.types import TransactionList
 from src.instance.instance import Instance
 
 class GreedyAlgorithm(BaseAlgorithm):
-    def __init__(self, instance: Instance):
-        self._instance = instance
+    def name(self) -> str:
+        return 'greedy'
 
-    def run(self) -> Solution:
-        transactions, remaining_balances = self.get_balances_without_direct_transactions()
+    def run(self, instance: Instance) -> RunResult:
+        transactions, remaining_balances = self.get_balances_without_direct_transactions(instance)
 
         # heapq is a min-heap, so magnitudes are stored negated to pop the largest first;
         # the person index rides along and breaks ties deterministically
@@ -35,12 +36,16 @@ class GreedyAlgorithm(BaseAlgorithm):
             elif owed < due:
                 heapq.heappush(receivers, (-(due - owed), receiver))
 
-        return Solution(instance=self._instance, transactions=transactions)
+        solution = Solution(instance=instance, transactions=transactions)
 
-    def get_balances_without_direct_transactions(self) -> Tuple[TransactionList, List[Tuple[int, int]]]:
+        return RunResult(solution=solution, status='heuristic')
+
+    def get_balances_without_direct_transactions(
+        self, instance: Instance
+    ) -> Tuple[TransactionList, List[Tuple[int, int]]]:
         people_by_balance: Dict[int, List[int]] = {}
 
-        for person, balance in enumerate(self._instance.balances):
+        for person, balance in enumerate(instance.balances):
             if balance != 0:
                 people_by_balance.setdefault(balance, []).append(person)
 

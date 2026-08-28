@@ -1,23 +1,23 @@
-from src.instance.instance_reader import InstanceReader
-from src.algorithms.greedy_algorithm import GreedyAlgorithm
 from src.algorithms.exact_algorithm import ExactAlgorithm
+from src.algorithms.greedy_algorithm import GreedyAlgorithm
+from src.instance.instance_reader import InstanceReader
+from src.runner.runner import Runner
+
+INSTANCE_PATHS = [
+    "instances/10.txt",
+    "instances/20.txt",
+    "instances/30.txt",
+    "instances/40.txt",
+    "instances/50.txt",
+    "instances/100.txt",
+    "instances/1000.txt",
+]
 
 instance_reader = InstanceReader()
 
-instance = instance_reader.read("instances/10.txt")
+instances = [instance_reader.read(path) for path in INSTANCE_PATHS]
+algorithms = [GreedyAlgorithm(), ExactAlgorithm(time_limit=30.0)]
 
-greedy_algorithm = GreedyAlgorithm(instance)
-solution = greedy_algorithm.run()
-solution.validate()
+results = Runner(instances, algorithms).run()
 
-print(solution.describe())
-print()
-print(f"graph written to {solution.render('output/solution')}")
-
-exact_algorithm = ExactAlgorithm(instance)
-solution = exact_algorithm.run()
-solution.validate()
-
-print(solution.describe())
-print()
-print(f"graph written to {solution.render('output/solution_exact')}")
+print(results.to_string(index=False))

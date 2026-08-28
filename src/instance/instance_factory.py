@@ -4,7 +4,7 @@ import os
 import random
 
 class InstanceFactory:
-    def __init__(self, max_value: int, size: int, seed: Optional[int] = None):
+    def __init__(self, max_value: int, size: int, seed: Optional[int] = None) -> None:
         if max_value < 0:
             raise ValueError('max_value must be non-negative')
 
