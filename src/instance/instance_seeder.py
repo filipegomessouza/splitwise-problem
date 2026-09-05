@@ -4,26 +4,27 @@ from src.instance.instance_factory import InstanceFactory
 class InstanceSeeder:
     def seed(self) -> None:
         SEED = 42
-        PEOPLE = [10, 20, 30, 50, 100, 1000]
-        STRUCTURES = [0.0, 0.25, 0.5, 0.75, 1.0]
+
+        GRID = [
+            (10, [1, 2, 5]),
+            (20, [1, 2, 4, 5, 10]),
+            (30, [1, 3, 5, 10, 15]),
+            (50, [1, 5, 10, 25]),
+            (100, [1, 5, 10, 25, 50]),
+            (1000, [1, 10, 50, 100, 250, 500]),
+        ]
 
         i = 0
 
-        for people in PEOPLE:
-            # accidental zero-sum subsets grow with 2^people, so the range has to grow
-            # too or the low-structure instances stop being low-structure
-            max_balance = max(1000, 100 * people)
+        for N, components in GRID:
+            # accidental zero-sum subsets grow with 2^N, so the range has to grow too or
+            # the instances with few components stop having few zero-sum subsets
+            B = max(1000, 100 * N)
 
-            for structure in STRUCTURES:
-                instance_factory = InstanceFactory(
-                    people=people,
-                    max_balance=max_balance,
-                    structure=structure,
-                    seed=SEED + i,
-                )
+            for K in components:
+                instance_factory = InstanceFactory(N=N, B=B, K=K, seed=SEED + i)
 
                 i += 1
 
-                # people is zero-padded so that sorting the filenames sorts by size
-                file_name = f'n{people:04d}_b{max_balance}_w{structure:.2f}.txt'
+                file_name = f'n{N:04d}_b{B}_k{K:04d}.txt'
                 instance_factory.create_as_txt(os.path.join('instances', file_name))
