@@ -8,7 +8,7 @@ from src.instance.instance import Instance
 
 WARN_ABOVE_PEOPLE = 200
 
-LEGEND = 'P: person    C: contributed    B: balance'
+LEGEND = 'P: person    B: balance'
 
 @dataclass
 class Solution:
@@ -18,14 +18,14 @@ class Solution:
 
     @property
     def people(self) -> int:
-        return len(self.instance.contributions)
+        return len(self.instance.balances)
 
     @property
     def fitness(self) -> int:
         return len(self.transactions)
 
     def validate(self) -> None:
-        """Raise unless the transactions leave everyone having disbursed exactly the mean.
+        """Raise unless the transactions net out to exactly each person's balance.
 
         Checks the settlement, not its cost, so it holds for any algorithm's output.
         """
@@ -44,26 +44,19 @@ class Solution:
             net[payer] -= amount
             net[receiver] += amount
 
-        mean = self.instance.mean
-
-        for person, contribution in enumerate(self.instance.contributions):
-            disbursed = contribution - net[person]
-
-            if disbursed != mean:
-                raise ValueError(f"person {person} disbursed {disbursed} instead of the mean {mean}")
+        for person, balance in enumerate(self.instance.balances):
+            if net[person] != balance:
+                raise ValueError(f"person {person} settled {net[person]} instead of {balance}")
 
     def describe(self) -> str:
-        balances = self.instance.balances
-
         lines = [
-            f"{self.people} people, mean {self.instance.mean}, {self.fitness} transactions",
+            f"{self.people} people, {self.fitness} transactions",
             '',
-            f"{'person':>7} {'contributed':>12} {'balance':>9} {'role':>9}",
+            f"{'person':>7} {'balance':>9} {'role':>9}",
         ]
 
-        for person, contribution in enumerate(self.instance.contributions):
-            balance = balances[person]
-            lines.append(f"{person:>7} {contribution:>12} {balance:>9} {Role.of(balance).value:>9}")
+        for person, balance in enumerate(self.instance.balances):
+            lines.append(f"{person:>7} {balance:>9} {Role.of(balance).value:>9}")
 
         lines.append('')
         lines.append('transactions:')
@@ -96,13 +89,10 @@ class Solution:
         graph.attr(label=LEGEND, labelloc='t')
         graph.attr('node', shape='box', style='filled')
 
-        balances = self.instance.balances
-
-        for person, contribution in enumerate(self.instance.contributions):
-            balance = balances[person]
+        for person, balance in enumerate(self.instance.balances):
             graph.node(
                 str(person),
-                label=f"P: {person}\nC: {contribution}\nB: {balance}",
+                label=f"P: {person}\nB: {balance}",
                 fillcolor=Role.of(balance).color(),
             )
 

@@ -30,7 +30,7 @@ class ExactAlgorithm(BaseAlgorithm):
         return 'exact'
 
     def supports(self, instance: Instance) -> bool:
-        return 2 * len(instance.contributions) ** 2 <= LICENSE_VARIABLE_LIMIT
+        return 2 * len(instance.balances) ** 2 <= LICENSE_VARIABLE_LIMIT
 
     def run(self, instance: Instance) -> RunResult:
         # silenced from the environment up, otherwise the license banner escapes before
@@ -44,8 +44,8 @@ class ExactAlgorithm(BaseAlgorithm):
         if self._time_limit is not None:
             model.Params.TimeLimit = self._time_limit
 
-        I = range(len(instance.contributions))
-        J = range(len(instance.contributions))
+        I = range(len(instance.balances))
+        J = range(len(instance.balances))
 
         X = model.addVars(I, J, vtype=gp.GRB.CONTINUOUS, name="X")
         Y = model.addVars(I, J, vtype=gp.GRB.BINARY, name="Y")

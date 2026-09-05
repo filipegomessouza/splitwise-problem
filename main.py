@@ -1,17 +1,11 @@
+import glob
 from src.algorithms.exact_algorithm import ExactAlgorithm
 from src.algorithms.greedy_algorithm import GreedyAlgorithm
 from src.instance.instance_reader import InstanceReader
 from src.runner.runner import Runner
 
-INSTANCE_PATHS = [
-    "instances/10.txt",
-    "instances/20.txt",
-    "instances/30.txt",
-    "instances/40.txt",
-    "instances/50.txt",
-    "instances/100.txt",
-    "instances/1000.txt",
-]
+# the seeder zero-pads the people count, so sorting the paths sorts by instance size
+INSTANCE_PATHS = sorted(glob.glob('instances/*.txt'))
 
 instance_reader = InstanceReader()
 

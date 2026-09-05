@@ -20,7 +20,7 @@ class Runner:
         rows: List[Row] = []
 
         for instance in self._instances:
-            row: Row = {'people': len(instance.contributions)}
+            row: Row = {'people': len(instance.balances)}
 
             for algorithm in self._algorithms:
                 row.update(self._execute(instance, algorithm))
