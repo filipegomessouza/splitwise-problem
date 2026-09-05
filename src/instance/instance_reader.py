@@ -1,8 +1,8 @@
+import numpy as np
 from src.instance.instance import Instance
 
 class InstanceReader:
     def read(self, file_path: str) -> Instance:
-        with open(file_path, 'r') as file:
-            balances = [int(line) for line in file if line.strip()]
+        balances = np.loadtxt(file_path, dtype=np.int64, ndmin=1)
 
         return Instance(balances)

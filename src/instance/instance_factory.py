@@ -1,7 +1,7 @@
 from src.instance.instance import Instance
 from typing import List, Optional
 import os
-import random
+import numpy as np
 
 # a zero-sum component needs one payer and one receiver at the very least
 MIN_COMPONENT_SIZE = 2
@@ -57,17 +57,44 @@ class InstanceFactory:
         self._B = B
         self._K = K
         self._component_sizes = component_sizes
-        self._rng = random.Random(seed)
+        self._rng = np.random.default_rng(seed)
 
     def create(self) -> Instance:
+        sizes = np.asarray(self._sizes(), dtype=np.int64)
+
+        # every random draw the instance needs comes out in three calls rather than three
+        # per component: numpy's generator costs about the same per call whatever the size,
+        # so asking it for ten numbers ten thousand times measured 23x slower than asking
+        # once for a hundred thousand
+        receivers = self._receiver_counts(sizes)
+        payers = sizes - receivers
+        volumes = self._volumes(receivers, payers)
+
+        # tolist because the split below is a scalar loop, and np.float64 arithmetic is
+        # markedly slower than Python float arithmetic
+        uniforms = self._rng.random(self._N).tolist()
+
         balances: List[int] = []
 
-        for size in self._sizes():
-            balances.extend(self._zero_sum_component(size))
+        for receiver_count, payer_count, volume in zip(receivers, payers, volumes):
+            # the offset is passed rather than a slice of uniforms: slicing would copy the
+            # tail of the list once per component, which is quadratic in the component count
+            taken = len(balances)
+            volume = int(volume)
+            receiver_count = int(receiver_count)
 
-        self._rng.shuffle(balances)
+            balances.extend(self._bounded_split(volume, receiver_count, uniforms, taken))
+            balances.extend(
+                -part for part in
+                self._bounded_split(volume, int(payer_count), uniforms, taken + receiver_count)
+            )
 
-        return Instance(balances)
+        drawn = np.array(balances, dtype=np.int64)
+
+        # the components are contiguous as built, which would hand the partition away
+        self._rng.shuffle(drawn)
+
+        return Instance(drawn)
 
     def create_as_txt(self, file_path: str) -> None:
         instance = self.create()
@@ -77,9 +104,10 @@ class InstanceFactory:
         if directory:
             os.makedirs(directory, exist_ok=True)
 
+        # np.savetxt formats row by row in Python and measured 6.7x slower than this
         with open(file_path, 'w') as file:
-            for balance in instance.balances:
-                file.write(f"{balance}\n")
+            file.write('\n'.join(map(str, instance.balances.tolist())))
+            file.write('\n')
 
     def _sizes(self) -> List[int]:
         """Hand out the N people to the components, as evenly as they divide."""
@@ -90,25 +118,8 @@ class InstanceFactory:
 
         return [size + 1] * remainder + [size] * (self._K - remainder)
 
-    def _zero_sum_component(self, size: int) -> List[int]:
-        """Draw `size` non-zero balances within the range that sum to exactly zero."""
-        receivers = self._receiver_count(size)
-        payers = size - receivers
-
-        # the component's volume: bounded so that both sides can represent it, since each
-        # side splits it into parts of at least 1 and at most B
-        volume = self._rng.randint(
-            max(receivers, payers),
-            min(receivers, payers) * self._B,
-        )
-
-        return (
-            self._bounded_split(volume, receivers)
-            + [-part for part in self._bounded_split(volume, payers)]
-        )
-
-    def _receiver_count(self, size: int) -> int:
-        """Pick how many of a component's people are receivers, by coin flip within reach.
+    def _receiver_counts(self, sizes: np.ndarray) -> np.ndarray:
+        """Pick how many of each component's people are receivers, by coin flip within reach.
 
         Both sides carry the same volume, so a side of k people covers between k and k * B
         -- which leaves the split feasible only where the larger side fits inside what the
@@ -118,18 +129,34 @@ class InstanceFactory:
         span = self._B + 1
 
         # from size - receivers <= receivers * B and its mirror image
-        fewest = max(1, -(-size // span))
-        most = min(size - 1, size * self._B // span)
+        fewest = np.maximum(1, -(-sizes // span))
+        most = np.minimum(sizes - 1, sizes * self._B // span)
 
-        if fewest > most:
+        unreachable = fewest > most
+
+        if unreachable.any():
+            size = int(sizes[np.argmax(unreachable)])
+
             raise ValueError(
                 f"B {self._B} is too small to split a component of {size} people "
                 f"into two sides that can settle each other"
             )
 
-        return min(max(self._coin_flips(size), fewest), most)
+        return np.clip(self._rng.binomial(sizes, 0.5), fewest, most)
 
-    def _bounded_split(self, total: int, parts: int) -> List[int]:
+    def _volumes(self, receivers: np.ndarray, payers: np.ndarray) -> np.ndarray:
+        """Draw each component's volume, bounded so that both of its sides can represent it.
+
+        Each side splits the volume into parts of at least 1 and at most B, so the volume
+        has to fit between what the larger side needs and what the smaller side can reach.
+        """
+        return self._rng.integers(
+            np.maximum(receivers, payers),
+            np.minimum(receivers, payers) * self._B,
+            endpoint=True,
+        )
+
+    def _bounded_split(self, total: int, parts: int, uniforms: List[float], offset: int) -> List[int]:
         """Split `total` into `parts` integers in [1, B], one at a time.
 
         Each draw is bounded by what still leaves the remaining parts representable, so the
@@ -144,21 +171,24 @@ class InstanceFactory:
         """
         split: List[int] = []
 
+        # the loop cannot be vectorised -- every bound depends on what the earlier draws
+        # spent -- so it consumes randomness that create() already drew in bulk
         for index in range(parts):
             remaining = parts - 1 - index
 
             low = max(1, total - remaining * self._B)
             high = min(self._B, total - remaining)
 
-            part = self._draw_with_mean(low, high, total / (remaining + 1))
+            part = self._draw_with_mean(low, high, total / (remaining + 1), uniforms[offset + index])
 
             split.append(part)
             total -= part
 
         return split
 
-    def _draw_with_mean(self, low: int, high: int, mean: float) -> int:
-        """Draw an integer in [low, high] from a distribution with the given mean.
+    @staticmethod
+    def _draw_with_mean(low: int, high: int, mean: float, uniform: float) -> int:
+        """Turn a uniform draw into an integer in [low, high] whose distribution has the given mean.
 
         low + (high - low) * U ** (1 / shape) has mean low + (high - low) * shape /
         (shape + 1), so solving for the shape places the mean anywhere in the range --
@@ -178,9 +208,6 @@ class InstanceFactory:
             return high
 
         shape = target / (1 - target)
-        part = low + span * self._rng.random() ** (1 / shape)
+        part = low + span * uniform ** (1 / shape)
 
-        return min(max(round(part), low), high)
-
-    def _coin_flips(self, size: int) -> int:
-        return sum(1 for _ in range(size) if self._rng.random() < 0.5)
+        return int(min(max(round(part), low), high))

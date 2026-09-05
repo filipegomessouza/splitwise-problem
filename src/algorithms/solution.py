@@ -2,8 +2,8 @@ from dataclasses import dataclass
 import os
 import warnings
 import graphviz
+import numpy as np
 from src.constants.role import Role
-from src.constants.types import TransactionList
 from src.instance.instance import Instance
 
 WARN_ABOVE_PEOPLE = 200
@@ -12,9 +12,22 @@ LEGEND = 'P: person    B: balance'
 
 @dataclass
 class Solution:
-    """The transactions that settle an instance. Counterpart of Instance."""
+    """The transactions that settle an instance. Counterpart of Instance.
+
+    Transactions are held as three parallel arrays rather than a list of triples: it is
+    what lets validate settle everything with two scatter-adds, and what lets a local
+    search score a whole neighbourhood without unpacking anything. Amounts keep whatever
+    dtype the algorithm produced -- integers from the greedy, floats from the solver.
+    """
     instance: Instance
-    transactions: TransactionList
+    payers: np.ndarray
+    receivers: np.ndarray
+    amounts: np.ndarray
+
+    def __post_init__(self) -> None:
+        self.payers = np.asarray(self.payers, dtype=np.int64)
+        self.receivers = np.asarray(self.receivers, dtype=np.int64)
+        self.amounts = np.asarray(self.amounts)
 
     @property
     def people(self) -> int:
@@ -22,31 +35,51 @@ class Solution:
 
     @property
     def fitness(self) -> int:
-        return len(self.transactions)
+        return len(self.payers)
 
     def validate(self) -> None:
         """Raise unless the transactions net out to exactly each person's balance.
 
         Checks the settlement, not its cost, so it holds for any algorithm's output.
         """
-        net = [0] * self.people
+        if not (len(self.payers) == len(self.receivers) == len(self.amounts)):
+            raise ValueError('payers, receivers and amounts must be the same length')
 
-        for payer, receiver, amount in self.transactions:
-            if not 0 <= payer < self.people or not 0 <= receiver < self.people:
-                raise ValueError(f"transaction ({payer}, {receiver}, {amount}) refers to an unknown person")
+        unknown = (
+            (self.payers < 0) | (self.payers >= self.people)
+            | (self.receivers < 0) | (self.receivers >= self.people)
+        )
 
-            if payer == receiver:
-                raise ValueError(f"transaction ({payer}, {receiver}, {amount}) has the same payer and receiver")
+        self._reject(unknown, 'refers to an unknown person')
+        self._reject(self.payers == self.receivers, 'has the same payer and receiver')
+        self._reject(self.amounts <= 0, 'must transfer a positive amount')
 
-            if amount <= 0:
-                raise ValueError(f"transaction ({payer}, {receiver}, {amount}) must transfer a positive amount")
+        net = np.zeros(self.people, dtype=self.amounts.dtype)
 
-            net[payer] -= amount
-            net[receiver] += amount
+        # scatter-add rather than += so that repeated indices accumulate instead of
+        # each one overwriting the last
+        np.add.at(net, self.payers, -self.amounts)
+        np.add.at(net, self.receivers, self.amounts)
 
-        for person, balance in enumerate(self.instance.balances):
-            if net[person] != balance:
-                raise ValueError(f"person {person} settled {net[person]} instead of {balance}")
+        if not np.array_equal(net, self.instance.balances):
+            person = int(np.argmax(net != self.instance.balances))
+            raise ValueError(
+                f"person {person} settled {net[person]} instead of "
+                f"{self.instance.balances[person]}"
+            )
+
+    def _reject(self, offending: np.ndarray, complaint: str) -> None:
+        if not offending.any():
+            return
+
+        # argmax on a boolean array finds the first True, so the message names the same
+        # transaction a sequential check would have stopped at
+        index = int(np.argmax(offending))
+
+        raise ValueError(
+            f"transaction ({self.payers[index]}, {self.receivers[index]}, "
+            f"{self.amounts[index]}) {complaint}"
+        )
 
     def describe(self) -> str:
         lines = [
@@ -61,7 +94,7 @@ class Solution:
         lines.append('')
         lines.append('transactions:')
 
-        for payer, receiver, amount in self.transactions:
+        for payer, receiver, amount in zip(self.payers, self.receivers, self.amounts):
             lines.append(f"  person {payer} -> person {receiver}: {amount}")
 
         return '\n'.join(lines)
@@ -96,7 +129,7 @@ class Solution:
                 fillcolor=Role.of(balance).color(),
             )
 
-        for payer, receiver, amount in self.transactions:
+        for payer, receiver, amount in zip(self.payers, self.receivers, self.amounts):
             graph.edge(str(payer), str(receiver), label=str(amount))
 
         # graphviz appends the format as extension, so an already-suffixed path would

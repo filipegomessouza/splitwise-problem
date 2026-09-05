@@ -1,10 +1,10 @@
 from typing import Optional
 import gurobipy as gp
+import numpy as np
 from src.algorithms.base_algorithm import BaseAlgorithm
 from src.algorithms.run_result import RunResult
 from src.algorithms.solution import Solution
 from src.instance.instance import Instance
-from src.constants.types import TransactionList
 
 # the size-limited license caps the model, and this model uses 2n^2 variables
 LICENSE_VARIABLE_LIMIT = 2000
@@ -44,34 +44,29 @@ class ExactAlgorithm(BaseAlgorithm):
         if self._time_limit is not None:
             model.Params.TimeLimit = self._time_limit
 
-        I = range(len(instance.balances))
-        J = range(len(instance.balances))
-
-        X = model.addVars(I, J, vtype=gp.GRB.CONTINUOUS, name="X")
-        Y = model.addVars(I, J, vtype=gp.GRB.BINARY, name="Y")
-
-        model.setObjective(
-            gp.quicksum(Y[i, j] for i in I for j in J if i != j),
-            sense=gp.GRB.MINIMIZE
-        )
-
         balance = instance.balances
+        people = len(balance)
 
-        model.addConstrs(
-            (gp.quicksum(X[i, j] for j in J if i != j) - gp.quicksum(X[j, i] for j in J if i != j)
-             == -balance[i] for i in I),
-            name="balance_constraints"
-        )
+        # a self-transfer settles nothing, so the diagonal is pinned shut through the
+        # bounds -- which also lets the objective and the flow sums run over the whole
+        # matrix, since those entries contribute zero
+        transfer_limit = np.full((people, people), gp.GRB.INFINITY)
+        indicator_limit = np.ones((people, people))
+        np.fill_diagonal(transfer_limit, 0.0)
+        np.fill_diagonal(indicator_limit, 0.0)
 
-        model.addConstrs(
-            (X[i, j] <= max(balance[j], 0) * Y[i, j] for i in I for j in J if i != j),
-            name="link_constraints"
-        )
+        X = model.addMVar((people, people), lb=0.0, ub=transfer_limit, name="X")
+        Y = model.addMVar((people, people), ub=indicator_limit, vtype=gp.GRB.BINARY, name="Y")
 
-        model.addConstrs(
-            (X[i, j] >= 0 for i in I for j in J if i != j),
-            name="nonnegativity_constraints"
-        )
+        model.setObjective(Y.sum(), sense=gp.GRB.MINIMIZE)
+
+        model.addConstr(X.sum(axis=1) - X.sum(axis=0) == -balance, name="balance_constraints")
+
+        # broadcasting along the columns gives X[i, j] <= max(balance[j], 0) * Y[i, j]:
+        # nobody can be sent more than they are owed, and only over an open indicator
+        model.addConstr(X <= np.maximum(balance, 0)[np.newaxis, :] * Y, name="link_constraints")
+
+        # non-negativity rides on lb=0 above, where gurobi puts it by default anyway
 
         model.optimize()
 
@@ -81,12 +76,15 @@ class ExactAlgorithm(BaseAlgorithm):
         if model.SolCount == 0:
             raise RuntimeError(f"no feasible solution found (status: {status})")
 
-        transactions: TransactionList = [
-            (i, j, X[i, j].X)
-            for i in I for j in J
-            if i != j and Y[i, j].X > 0.5 and X[i, j].X > TRANSFER_TOLERANCE
-        ]
+        transfers = X.X
+        transferred = (Y.X > 0.5) & (transfers > TRANSFER_TOLERANCE)
+        payers, receivers = np.nonzero(transferred)
 
-        solution = Solution(instance=instance, transactions=transactions)
+        solution = Solution(
+            instance=instance,
+            payers=payers,
+            receivers=receivers,
+            amounts=transfers[transferred],
+        )
 
         return RunResult(solution=solution, status=status, gap=model.MIPGap)
