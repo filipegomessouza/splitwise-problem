@@ -26,7 +26,7 @@ class GreedyAlgorithm(BaseAlgorithm):
             amounts=amounts,
         )
 
-        return RunResult(solution=solution, status='heuristic')
+        return RunResult(solution=solution)
 
     def settle(self, people: np.ndarray, balances: np.ndarray) -> Transactions:
         """Settle any set of people whose balances sum to zero.

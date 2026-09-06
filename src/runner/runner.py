@@ -1,3 +1,4 @@
+import sys
 import time
 from typing import Any, Dict, List, Optional
 import pandas as pd
@@ -5,7 +6,7 @@ from src.algorithms.base_algorithm import BaseAlgorithm
 from src.instance.instance import Instance
 
 # measured once per algorithm, so each one contributes this block of columns
-METRICS = ['fitness', 'seconds', 'status', 'gap', 'valid']
+METRICS = ['fitness', 'seconds']
 
 Row = Dict[str, Any]
 
@@ -40,45 +41,35 @@ class Runner:
         name = algorithm.name()
 
         if not algorithm.supports(instance):
-            return self._metrics(name, status='skipped')
+            return self._metrics(name)
 
         started = time.perf_counter()
 
         try:
             result = algorithm.run(instance)
         except Exception as error:
-            return self._metrics(name, status=f"error: {error}", seconds=time.perf_counter() - started)
+            print(
+                f"{name} failed on {len(instance.balances)} people: {error}",
+                file=sys.stderr,
+            )
+
+            return self._metrics(name, seconds=time.perf_counter() - started)
 
         seconds = time.perf_counter() - started
 
-        try:
-            result.solution.validate()
-            valid = True
-        except ValueError:
-            valid = False
+        # deliberately outside the try: swallowing this would let a broken algorithm post
+        # the best fitness in the table with nothing to flag it
+        result.solution.validate()
 
-        return self._metrics(
-            name,
-            status=result.status,
-            seconds=seconds,
-            fitness=result.solution.fitness,
-            gap=result.gap,
-            valid=valid,
-        )
+        return self._metrics(name, seconds=seconds, fitness=result.solution.fitness)
 
     def _metrics(
         self,
         name: str,
-        status: str,
         seconds: Optional[float] = None,
         fitness: Optional[int] = None,
-        gap: Optional[float] = None,
-        valid: Optional[bool] = None,
     ) -> Row:
         return {
             f'{name}_fitness': fitness,
             f'{name}_seconds': seconds,
-            f'{name}_status': status,
-            f'{name}_gap': gap,
-            f'{name}_valid': valid,
         }

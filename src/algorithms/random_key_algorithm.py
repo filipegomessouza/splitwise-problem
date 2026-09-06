@@ -83,7 +83,7 @@ class RandomKeyAlgorithm(BaseAlgorithm):
             amounts=np.concatenate(amounts) if amounts else np.empty(0, dtype=np.int64),
         )
 
-        return RunResult(solution=solution, status='constructive')
+        return RunResult(solution=solution)
 
     def _keys_for(self, instance: Instance) -> np.ndarray:
         """The chromosome to decode this instance with, drawn on the spot if there is none.

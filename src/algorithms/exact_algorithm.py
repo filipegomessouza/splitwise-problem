@@ -87,4 +87,4 @@ class ExactAlgorithm(BaseAlgorithm):
             amounts=transfers[transferred],
         )
 
-        return RunResult(solution=solution, status=status, gap=model.MIPGap)
+        return RunResult(solution=solution)
