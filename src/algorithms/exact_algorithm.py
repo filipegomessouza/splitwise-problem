@@ -1,7 +1,7 @@
-from typing import Optional
+from typing import List, Optional
 import gurobipy as gp
 import numpy as np
-from src.algorithms.base_algorithm import BaseAlgorithm
+from src.algorithms.base_algorithm import METRICS, BaseAlgorithm
 from src.algorithms.run_result import RunResult
 from src.algorithms.solution import Solution
 from src.instance.instance import Instance
@@ -31,6 +31,10 @@ class ExactAlgorithm(BaseAlgorithm):
 
     def supports(self, instance: Instance) -> bool:
         return 2 * len(instance.balances) ** 2 <= LICENSE_VARIABLE_LIMIT
+
+    def metrics(self) -> List[str]:
+        # alone among the algorithms, this one can say whether its answer is the optimum
+        return METRICS + ['proven']
 
     def run(self, instance: Instance) -> RunResult:
         # silenced from the environment up, otherwise the license banner escapes before
@@ -87,4 +91,6 @@ class ExactAlgorithm(BaseAlgorithm):
             amounts=transfers[transferred],
         )
 
-        return RunResult(solution=solution)
+        # anything short of OPTIMAL means the objective is an incumbent: an upper bound
+        # that may or may not be the optimum, with no way to tell from here
+        return RunResult(solution=solution, proven=model.Status == gp.GRB.OPTIMAL)

@@ -3,10 +3,8 @@ import time
 from typing import Any, Dict, List, Optional
 import pandas as pd
 from src.algorithms.base_algorithm import BaseAlgorithm
+from src.algorithms.run_result import RunResult
 from src.instance.instance import Instance
-
-# measured once per algorithm, so each one contributes this block of columns
-METRICS = ['fitness', 'seconds']
 
 Row = Dict[str, Any]
 
@@ -34,14 +32,14 @@ class Runner:
         return ['people'] + [
             f"{algorithm.name()}_{metric}"
             for algorithm in self._algorithms
-            for metric in METRICS
+            for metric in algorithm.metrics()
         ]
 
     def _execute(self, instance: Instance, algorithm: BaseAlgorithm) -> Row:
         name = algorithm.name()
 
         if not algorithm.supports(instance):
-            return self._metrics(name)
+            return self._metrics(algorithm)
 
         started = time.perf_counter()
 
@@ -53,7 +51,7 @@ class Runner:
                 file=sys.stderr,
             )
 
-            return self._metrics(name, seconds=time.perf_counter() - started)
+            return self._metrics(algorithm, seconds=time.perf_counter() - started)
 
         seconds = time.perf_counter() - started
 
@@ -61,15 +59,23 @@ class Runner:
         # the best fitness in the table with nothing to flag it
         result.solution.validate()
 
-        return self._metrics(name, seconds=seconds, fitness=result.solution.fitness)
+        return self._metrics(algorithm, seconds=seconds, result=result)
 
     def _metrics(
         self,
-        name: str,
+        algorithm: BaseAlgorithm,
         seconds: Optional[float] = None,
-        fitness: Optional[int] = None,
+        result: Optional[RunResult] = None,
     ) -> Row:
+        measured = {
+            'fitness': result.solution.fitness if result is not None else None,
+            'seconds': seconds,
+            'proven': result.proven if result is not None else None,
+        }
+
+        # an algorithm that declares a metric nobody measures fails loudly here, rather
+        # than quietly contributing an all-empty column
         return {
-            f'{name}_fitness': fitness,
-            f'{name}_seconds': seconds,
+            f'{algorithm.name()}_{metric}': measured[metric]
+            for metric in algorithm.metrics()
         }

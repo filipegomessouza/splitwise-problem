@@ -14,7 +14,7 @@ instances = [instance_reader.read(path) for path in INSTANCE_PATHS]
 algorithms = [
     GreedyAlgorithm(),
     RandomKeyAlgorithm(seed=42),
-    ExactAlgorithm(time_limit=30.0),
+    ExactAlgorithm(time_limit=60.0),
 ]
 
 results = Runner(instances, algorithms).run()
