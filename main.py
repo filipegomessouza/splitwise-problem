@@ -1,4 +1,5 @@
 import glob
+from src.algorithms.best_improvement_algorithm import BestImprovementAlgorithm
 from src.algorithms.exact_algorithm import ExactAlgorithm
 from src.algorithms.greedy_algorithm import GreedyAlgorithm
 from src.algorithms.random_key_algorithm import RandomKeyAlgorithm
@@ -14,7 +15,8 @@ instances = [instance_reader.read(path) for path in INSTANCE_PATHS]
 algorithms = [
     GreedyAlgorithm(),
     RandomKeyAlgorithm(seed=42),
-    ExactAlgorithm(time_limit=60.0),
+    BestImprovementAlgorithm(RandomKeyAlgorithm(seed=42)),
+    ExactAlgorithm(time_limit=30.0),
 ]
 
 results = Runner(instances, algorithms).run()
