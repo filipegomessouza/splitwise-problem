@@ -8,26 +8,51 @@ from src.instance.instance import Instance
 
 EMPTY = np.empty(0, dtype=np.int64)
 
+Transactions = Tuple[np.ndarray, np.ndarray, np.ndarray]
+
 class GreedyAlgorithm(BaseAlgorithm):
     def name(self) -> str:
         return 'greedy'
 
     def run(self, instance: Instance) -> RunResult:
-        payers, receivers, amounts, remaining = self.get_balances_without_direct_transactions(instance)
-
-        heap_payers, heap_receivers, heap_amounts = self._settle_largest_first(instance, remaining)
+        payers, receivers, amounts = self.settle(
+            np.arange(len(instance.balances)), instance.balances
+        )
 
         solution = Solution(
             instance=instance,
-            payers=np.concatenate((payers, heap_payers)),
-            receivers=np.concatenate((receivers, heap_receivers)),
-            amounts=np.concatenate((amounts, heap_amounts)),
+            payers=payers,
+            receivers=receivers,
+            amounts=amounts,
         )
 
         return RunResult(solution=solution, status='heuristic')
 
+    def settle(self, people: np.ndarray, balances: np.ndarray) -> Transactions:
+        """Settle any set of people whose balances sum to zero.
+
+        Works on a subset as readily as on a whole instance, so a decoder that has split
+        an instance into independent zero-sum groups can hand each one over without
+        building an Instance around it. Internally everything is a position into
+        `balances`; `people` carries those positions back to the caller's index space,
+        applied once at the end.
+        """
+        paired_payers, paired_receivers, paired_amounts, left = (
+            self.get_balances_without_direct_transactions(balances)
+        )
+
+        heap_payers, heap_receivers, heap_amounts = self._settle_largest_first(
+            left, balances[left]
+        )
+
+        return (
+            people[np.concatenate((paired_payers, heap_payers))],
+            people[np.concatenate((paired_receivers, heap_receivers))],
+            np.concatenate((paired_amounts, heap_amounts)),
+        )
+
     def get_balances_without_direct_transactions(
-        self, instance: Instance
+        self, balances: np.ndarray
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """Pair people who owe and are owed the very same amount, one transaction each.
 
@@ -37,10 +62,9 @@ class GreedyAlgorithm(BaseAlgorithm):
         gets matched differs from a bucket-and-pop pass, but the count -- the only part
         the fitness sees -- is the same.
 
-        Returns the matched transactions plus the people still holding a balance.
+        Returns the matched transactions plus the people still holding a balance, all as
+        positions into `balances`.
         """
-        balances = instance.balances
-
         receivers = np.flatnonzero(balances > 0)
         payers = np.flatnonzero(balances < 0)
 
@@ -68,9 +92,7 @@ class GreedyAlgorithm(BaseAlgorithm):
             remaining,
         )
 
-    def _settle_largest_first(
-        self, instance: Instance, remaining: np.ndarray
-    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    def _settle_largest_first(self, positions: np.ndarray, balances: np.ndarray) -> Transactions:
         """Repeatedly settle the largest payer against the largest receiver.
 
         Deliberately not vectorised, and deliberately on Python ints: every step depends
@@ -78,13 +100,13 @@ class GreedyAlgorithm(BaseAlgorithm):
         measured 23% slower than Python ints through heapq -- on the greedy's dominant
         cost. tolist() is the boundary where the arrays are handed back.
         """
-        balances = instance.balances[remaining].tolist()
-        people = remaining.tolist()
+        owed = balances.tolist()
+        people = positions.tolist()
 
         # heapq is a min-heap, so magnitudes are stored negated to pop the largest first;
-        # the person index rides along and breaks ties deterministically
-        payers = [(balance, person) for person, balance in zip(people, balances) if balance < 0]
-        receivers = [(-balance, person) for person, balance in zip(people, balances) if balance > 0]
+        # the position rides along and breaks ties deterministically
+        payers = [(balance, person) for person, balance in zip(people, owed) if balance < 0]
+        receivers = [(-balance, person) for person, balance in zip(people, owed) if balance > 0]
 
         heapq.heapify(payers)
         heapq.heapify(receivers)
@@ -94,21 +116,21 @@ class GreedyAlgorithm(BaseAlgorithm):
         settled_amounts: List[int] = []
 
         while payers and receivers:
-            owed, payer = heapq.heappop(payers)
+            owes, payer = heapq.heappop(payers)
             due, receiver = heapq.heappop(receivers)
 
-            owed = -owed
+            owes = -owes
             due = -due
-            amount = min(owed, due)
+            amount = min(owes, due)
 
             settled_payers.append(payer)
             settled_receivers.append(receiver)
             settled_amounts.append(amount)
 
-            if owed > due:
-                heapq.heappush(payers, (-(owed - due), payer))
-            elif owed < due:
-                heapq.heappush(receivers, (-(due - owed), receiver))
+            if owes > due:
+                heapq.heappush(payers, (-(owes - due), payer))
+            elif owes < due:
+                heapq.heappush(receivers, (-(due - owes), receiver))
 
         # three flat lists convert far faster than one list of triples would
         return (
