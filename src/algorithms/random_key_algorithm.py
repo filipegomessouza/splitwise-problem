@@ -4,6 +4,7 @@ from src.algorithms.base_algorithm import BaseAlgorithm
 from src.algorithms.greedy_algorithm import GreedyAlgorithm
 from src.algorithms.run_result import RunResult
 from src.algorithms.solution import Solution
+from src.helpers.direct_transactions import pair_direct_transactions
 from src.instance.instance import Instance
 
 class RandomKeyAlgorithm(BaseAlgorithm):
@@ -59,16 +60,28 @@ class RandomKeyAlgorithm(BaseAlgorithm):
 
     def run(self, instance: Instance) -> RunResult:
         balances = instance.balances
+        keys = self._keys_for(instance)
 
-        # stable so that equal keys keep person order, which keeps a run reproducible
-        order = np.argsort(self._keys_for(instance), kind='stable')
+        # paired before splitting, not within each group: a +v and its -v can land in
+        # different groups, and then neither gets its free direct transaction. Every pair
+        # is a zero-sum set of two, so this hands out parts and shrinks what is left to
+        # partition
+        paired_payers, paired_receivers, paired_amounts, left = pair_direct_transactions(balances)
 
-        payers: List[np.ndarray] = []
-        receivers: List[np.ndarray] = []
-        amounts: List[np.ndarray] = []
+        payers: List[np.ndarray] = [paired_payers]
+        receivers: List[np.ndarray] = [paired_receivers]
+        amounts: List[np.ndarray] = [paired_amounts]
+
+        # the key order restricted to whoever is left, already in instance indices, so the
+        # groups come back global and need no remapping. Stable so that equal keys keep
+        # person order, which keeps a run reproducible
+        order = left[np.argsort(keys[left], kind='stable')]
 
         for group in self.zero_sum_groups(balances, order):
-            group_payers, group_receivers, group_amounts = self._greedy.settle(
+            # settle_largest_first rather than settle: pairing above exhausted every exact
+            # match, so each magnitude now has people on one side only and a second
+            # pairing pass over a group would provably find nothing
+            group_payers, group_receivers, group_amounts = self._greedy.settle_largest_first(
                 group, balances[group]
             )
 
@@ -76,11 +89,13 @@ class RandomKeyAlgorithm(BaseAlgorithm):
             receivers.append(group_receivers)
             amounts.append(group_amounts)
 
+        # no empty-list guard needed: the pairing above always contributes a first entry,
+        # even when it is an empty array
         solution = Solution(
             instance=instance,
-            payers=np.concatenate(payers) if payers else np.empty(0, dtype=np.int64),
-            receivers=np.concatenate(receivers) if receivers else np.empty(0, dtype=np.int64),
-            amounts=np.concatenate(amounts) if amounts else np.empty(0, dtype=np.int64),
+            payers=np.concatenate(payers),
+            receivers=np.concatenate(receivers),
+            amounts=np.concatenate(amounts),
         )
 
         return RunResult(solution=solution)
