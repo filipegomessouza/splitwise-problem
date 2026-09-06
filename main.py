@@ -1,6 +1,7 @@
 import glob
 from src.algorithms.best_improvement_algorithm import BestImprovementAlgorithm
 from src.algorithms.exact_algorithm import ExactAlgorithm
+from src.algorithms.first_improvement_algorithm import FirstImprovementAlgorithm
 from src.algorithms.greedy_algorithm import GreedyAlgorithm
 from src.algorithms.random_key_algorithm import RandomKeyAlgorithm
 from src.instance.instance_reader import InstanceReader
@@ -16,6 +17,7 @@ algorithms = [
     GreedyAlgorithm(),
     RandomKeyAlgorithm(seed=42),
     BestImprovementAlgorithm(RandomKeyAlgorithm(seed=42)),
+    FirstImprovementAlgorithm(RandomKeyAlgorithm(seed=42)),
     ExactAlgorithm(time_limit=30.0),
 ]
 
