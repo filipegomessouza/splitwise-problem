@@ -1,4 +1,4 @@
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 import numpy as np
 from src.algorithms.base_algorithm import BaseAlgorithm
 from src.algorithms.greedy_algorithm import GreedyAlgorithm
@@ -17,16 +17,30 @@ class RandomKeyAlgorithm(BaseAlgorithm):
     Written as a BRKGA decoder, so the object is reusable: set_random_keys swaps the
     chromosome without rebuilding anything, and one GreedyAlgorithm is shared across
     every group of every call.
+
+    The chromosome is optional, because it only makes sense once the instance is known --
+    it needs exactly one key per person. Without one, run draws its own for whatever
+    instance it is handed, which is what lets a single object serve a whole benchmark.
     """
 
-    def __init__(self, random_keys: np.ndarray) -> None:
+    def __init__(self, seed: Optional[int] = None) -> None:
         self._greedy = GreedyAlgorithm()
-        self.set_random_keys(random_keys)
+        self._rng = np.random.default_rng(seed)
+        self._random_keys: Optional[np.ndarray] = None
 
     def name(self) -> str:
         return 'random_key'
 
-    def set_random_keys(self, random_keys: np.ndarray) -> None:
+    @property
+    def random_keys(self) -> Optional[np.ndarray]:
+        return self._random_keys
+
+    def set_random_keys(self, random_keys: Optional[np.ndarray]) -> None:
+        if random_keys is None:
+            self._random_keys = None
+
+            return
+
         keys = np.asarray(random_keys, dtype=np.float64)
 
         if keys.ndim != 1:
@@ -40,19 +54,14 @@ class RandomKeyAlgorithm(BaseAlgorithm):
         self._random_keys = keys
 
     def supports(self, instance: Instance) -> bool:
-        return len(instance.balances) == len(self._random_keys)
+        # without a chromosome any instance is fair game, since run draws one to fit
+        return self._random_keys is None or len(self._random_keys) == len(instance.balances)
 
     def run(self, instance: Instance) -> RunResult:
-        if not self.supports(instance):
-            raise ValueError(
-                f"{len(self._random_keys)} random keys cannot decode an instance of "
-                f"{len(instance.balances)} people"
-            )
-
         balances = instance.balances
 
         # stable so that equal keys keep person order, which keeps a run reproducible
-        order = np.argsort(self._random_keys, kind='stable')
+        order = np.argsort(self._keys_for(instance), kind='stable')
 
         payers: List[np.ndarray] = []
         receivers: List[np.ndarray] = []
@@ -75,6 +84,26 @@ class RandomKeyAlgorithm(BaseAlgorithm):
         )
 
         return RunResult(solution=solution, status='constructive')
+
+    def _keys_for(self, instance: Instance) -> np.ndarray:
+        """The chromosome to decode this instance with, drawn on the spot if there is none.
+
+        A drawn chromosome stays local to the call and is never kept: holding on to it
+        would leave the object sized to whichever instance came first, and every instance
+        of another size would stop being supported from then on.
+        """
+        people = len(instance.balances)
+
+        if self._random_keys is None:
+            return self._rng.random(people)
+
+        if len(self._random_keys) != people:
+            raise ValueError(
+                f"{len(self._random_keys)} random keys cannot decode an instance of "
+                f"{people} people"
+            )
+
+        return self._random_keys
 
     def zero_sum_groups(self, balances: np.ndarray, order: np.ndarray) -> List[np.ndarray]:
         """Split the people, in the given order, into groups whose balances sum to zero.
