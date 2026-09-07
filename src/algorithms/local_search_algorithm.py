@@ -1,20 +1,22 @@
 from abc import ABC, abstractmethod
-from typing import Optional, Tuple
+from typing import List, Optional, Tuple
 import numpy as np
 from src.algorithms.base_algorithm import BaseAlgorithm
+from src.algorithms.order_evaluator import OrderEvaluator
 from src.algorithms.permutation_constructor import PermutationConstructor
 from src.algorithms.permutation_decoder import PermutationDecoder
 from src.algorithms.run_result import RunResult
 from src.algorithms.solution import Solution
 from src.instance.instance import Instance
 
-# the whole neighbourhood is O(n^2) orders and each one is decoded from scratch, so the
-# work per iteration grows as n^3 -- fine up to here, hopeless on the 1000-person
-# instances until the reevaluation stops redoing the untouched part of the order
-MAX_PEOPLE = 100
+# the whole neighbourhood is O(n^2) orders and scoring one is O(n), so the work per
+# iteration grows as n^3. The evaluator took the constant down by about an order of
+# magnitude, not the exponent, so the 1000-person instances stay out of reach until a
+# neighbour can be scored without scanning the tail of the order
+MAX_PEOPLE = 300
 
-# a swapped order and the solution it decodes to, which is what every step passes around
-Step = Tuple[np.ndarray, Solution]
+# a swapped order and what it scores, which is what every step passes around
+Step = Tuple[List[int], int]
 
 class LocalSearchAlgorithm(BaseAlgorithm, ABC):
     """Improves an order by swapping two people at a time, until nothing gets better.
@@ -60,7 +62,7 @@ class LocalSearchAlgorithm(BaseAlgorithm, ABC):
 
         return RunResult(solution=improved)
 
-    def improve(self, order: np.ndarray, solution: Solution) -> Step:
+    def improve(self, order: np.ndarray, solution: Solution) -> Tuple[np.ndarray, Solution]:
         """Refine an order until no swap improves it, or max_iterations run out.
 
         `solution` must be what `order` decodes to -- it is the incumbent, and its fitness
@@ -70,35 +72,59 @@ class LocalSearchAlgorithm(BaseAlgorithm, ABC):
         The order comes back alongside the solution because a metaheuristic needs it: the
         refined order is the part worth feeding back into the next chromosome, and it
         cannot be read off the solution.
+
+        Steps carry a fitness, not a solution, and the winner is decoded once at the end.
+        A solution is a function of the partition an order cuts, so decoding the last order
+        gives exactly what decoding every step along the way would have -- for one decode
+        instead of one per step.
         """
+        instance = solution.instance
+        positions = order.tolist()
+        fitness = solution.fitness
+
+        # one evaluator for the whole search, so its group-cost cache carries across
+        # iterations: consecutive incumbents differ by a single swap, so most of the
+        # partition -- and so most of the cache -- survives a step
+        evaluator = OrderEvaluator(instance)
+
+        moved = False
         iterations = 0
 
         while self._max_iterations is None or iterations < self._max_iterations:
-            accepted = self._accept(order, solution)
+            accepted = self._accept(evaluator, positions, fitness)
 
             # no neighbour beat the incumbent: this order is a local optimum for swaps
             if accepted is None:
                 break
 
-            order, solution = accepted
+            positions, fitness = accepted
+            moved = True
             iterations += 1
 
-        return order, solution
+        if not moved:
+            return order, solution
+
+        improved = np.array(positions, dtype=np.int64)
+
+        return improved, self._decoder.decode(instance, improved)
 
     @abstractmethod
-    def _accept(self, order: np.ndarray, solution: Solution) -> Optional[Step]:
-        """The neighbour to move to, or None if none of them is strictly better."""
+    def _accept(
+        self,
+        evaluator: OrderEvaluator,
+        order: List[int],
+        fitness: int,
+    ) -> Optional[Step]:
+        """The neighbour to move to, or None if none of them is strictly better.
+
+        The evaluator is a parameter rather than state on the search, so that improve stays
+        reentrant and every iteration gets a cache of its own.
+        """
         pass
 
-    def _neighbour(self, instance: Instance, order: np.ndarray, i: int, j: int) -> Step:
-        """The order with positions i and j swapped, decoded.
+    def _swap(self, order: List[int], i: int, j: int) -> List[int]:
+        """The order with positions i and j swapped, as a new list."""
+        swapped = order.copy()
+        swapped[i], swapped[j] = swapped[j], swapped[i]
 
-        Decodes the whole order rather than the stretch the swap disturbs. A swap only
-        perturbs the running totals between i and j, so most of the cuts are recomputed to
-        the same place -- but getting the fitness right comes first, and the incremental
-        version is a change to make against a correct baseline, not instead of one.
-        """
-        candidate = order.copy()
-        candidate[i], candidate[j] = candidate[j], candidate[i]
-
-        return candidate, self._decoder.decode(instance, candidate)
+        return swapped

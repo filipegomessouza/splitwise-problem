@@ -1,7 +1,6 @@
-from typing import Optional
-import numpy as np
+from typing import List, Optional, Tuple
 from src.algorithms.local_search_algorithm import LocalSearchAlgorithm, Step
-from src.algorithms.solution import Solution
+from src.algorithms.order_evaluator import OrderEvaluator
 
 class BestImprovementAlgorithm(LocalSearchAlgorithm):
     """Moves to the best neighbour in the whole swap neighbourhood, or stops.
@@ -15,21 +14,33 @@ class BestImprovementAlgorithm(LocalSearchAlgorithm):
     def name(self) -> str:
         return 'best_improvement'
 
-    def _accept(self, order: np.ndarray, solution: Solution) -> Optional[Step]:
-        instance = solution.instance
+    def _accept(
+        self,
+        evaluator: OrderEvaluator,
+        order: List[int],
+        fitness: int,
+    ) -> Optional[Step]:
         positions = len(order)
+        prefixes = evaluator.prefixes(order)
 
-        best: Optional[Step] = None
+        best: Optional[Tuple[int, int]] = None
         # seeded with the incumbent, so a neighbour has to be strictly better to be kept
         # at all, and ties among equally good neighbours go to the first one scanned
-        best_fitness = solution.fitness
+        best_fitness = fitness
 
         for i in range(positions - 1):
+            prefix = prefixes[i]
+
             for j in range(i + 1, positions):
-                candidate, candidate_solution = self._neighbour(instance, order, i, j)
+                candidate_fitness = evaluator.fitness_from(prefix, order, i, j)
 
-                if candidate_solution.fitness < best_fitness:
-                    best_fitness = candidate_solution.fitness
-                    best = (candidate, candidate_solution)
+                if candidate_fitness < best_fitness:
+                    best_fitness = candidate_fitness
+                    best = (i, j)
 
-        return best
+        if best is None:
+            return None
+
+        # the winner is swapped for real only now: every neighbour up to here was scored
+        # off a copy of the tail, never off a whole rebuilt order
+        return self._swap(order, *best), best_fitness

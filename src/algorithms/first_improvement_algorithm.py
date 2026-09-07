@@ -1,7 +1,6 @@
-from typing import Optional
-import numpy as np
+from typing import List, Optional
 from src.algorithms.local_search_algorithm import LocalSearchAlgorithm, Step
-from src.algorithms.solution import Solution
+from src.algorithms.order_evaluator import OrderEvaluator
 
 class FirstImprovementAlgorithm(LocalSearchAlgorithm):
     """Moves to the first neighbour that improves on the incumbent, or stops.
@@ -19,15 +18,25 @@ class FirstImprovementAlgorithm(LocalSearchAlgorithm):
     def name(self) -> str:
         return 'first_improvement'
 
-    def _accept(self, order: np.ndarray, solution: Solution) -> Optional[Step]:
-        instance = solution.instance
+    def _accept(
+        self,
+        evaluator: OrderEvaluator,
+        order: List[int],
+        fitness: int,
+    ) -> Optional[Step]:
         positions = len(order)
 
-        for i in range(positions - 1):
-            for j in range(i + 1, positions):
-                candidate, candidate_solution = self._neighbour(instance, order, i, j)
+        # built for every position even when the scan returns from the first one: it is one
+        # O(n) pass against the O(n^2) neighbourhood it serves
+        prefixes = evaluator.prefixes(order)
 
-                if candidate_solution.fitness < solution.fitness:
-                    return candidate, candidate_solution
+        for i in range(positions - 1):
+            prefix = prefixes[i]
+
+            for j in range(i + 1, positions):
+                candidate_fitness = evaluator.fitness_from(prefix, order, i, j)
+
+                if candidate_fitness < fitness:
+                    return self._swap(order, i, j), candidate_fitness
 
         return None

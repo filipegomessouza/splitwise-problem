@@ -1,7 +1,8 @@
-from typing import Dict, List, Tuple
+from typing import List
 import numpy as np
 from src.algorithms.greedy_algorithm import GreedyAlgorithm
 from src.algorithms.solution import Solution
+from src.algorithms.zero_sum_scan import ZeroSumScan
 from src.helpers.direct_transactions import pair_direct_transactions
 from src.instance.instance import Instance
 
@@ -80,41 +81,17 @@ class PermutationDecoder:
     def zero_sum_groups(self, balances: np.ndarray, order: np.ndarray) -> List[np.ndarray]:
         """Split the people, in the given order, into groups whose balances sum to zero.
 
-        The balances between two positions sum to zero exactly when the running total is
-        the same at both -- the value they share is irrelevant, only that it repeats. So
-        every repeat of a running total closes a group. Cutting only where the total is
-        zero, which is the special case of repeating the empty prefix, would throw away
-        every other repeat.
-
-        Removing a group changes nothing about the totals that follow it, since the group
-        contributed zero, so a single pass suffices: no need to restart on the remainder.
+        Runs a ZeroSumScan from end to end and collects what it closes; the cuts themselves
+        are defined there, once, so that a search scoring neighbours and this cannot drift
+        into disagreeing about where a group ends.
         """
-        pending: List[int] = []
-        # running total -> how far into `pending` it was reached
-        opened_at: Dict[int, int] = {0: 0}
-        # insertion order, so a closed group's entries can be rolled back
-        history: List[Tuple[int, int]] = [(0, 0)]
-
-        running = 0
+        scan = ZeroSumScan(balances)
         groups: List[np.ndarray] = []
 
-        for person in order:
-            running += int(balances[person])
-            pending.append(int(person))
+        for person in order.tolist():
+            group = scan.add(person)
 
-            if running in opened_at:
-                at = opened_at[running]
-
-                groups.append(np.array(pending[at:], dtype=np.int64))
-                del pending[at:]
-
-                # the positions recorded inside the group are gone; leaving them behind
-                # would let a later repeat cut at an index that now holds someone else
-                while history[-1][1] > at:
-                    stale, _ = history.pop()
-                    del opened_at[stale]
-            else:
-                opened_at[running] = len(pending)
-                history.append((running, len(pending)))
+            if group is not None:
+                groups.append(np.array(group, dtype=np.int64))
 
         return groups

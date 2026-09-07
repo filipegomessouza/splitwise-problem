@@ -97,3 +97,35 @@ class GreedyAlgorithm(BaseAlgorithm):
             np.array(settled_receivers, dtype=np.int64),
             np.array(settled_amounts, dtype=np.int64),
         )
+
+    def count_largest_first(self, balances: List[int]) -> int:
+        """How many transactions settle_largest_first would need, without building them.
+
+        Takes balances alone, no people: what decides the count is where a pop finds owes
+        equal to due, since that step settles two people rather than one, and that depends
+        on the magnitudes only. Who is who changes which pair settles, never how many do.
+
+        For a search that scores thousands of neighbours a second, the three lists and the
+        three arrays settle_largest_first ends with are the bulk of its cost, and every one
+        of them is thrown away unread.
+        """
+        payers = [balance for balance in balances if balance < 0]
+        receivers = [-balance for balance in balances if balance > 0]
+
+        heapq.heapify(payers)
+        heapq.heapify(receivers)
+
+        count = 0
+
+        while payers and receivers:
+            owes = -heapq.heappop(payers)
+            due = -heapq.heappop(receivers)
+
+            count += 1
+
+            if owes > due:
+                heapq.heappush(payers, -(owes - due))
+            elif owes < due:
+                heapq.heappush(receivers, -(due - owes))
+
+        return count
