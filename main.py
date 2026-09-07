@@ -18,6 +18,8 @@ algorithms = [
     RandomKeyAlgorithm(seed=42),
     BestImprovementAlgorithm(RandomKeyAlgorithm(seed=42)),
     FirstImprovementAlgorithm(RandomKeyAlgorithm(seed=42)),
+    BestImprovementAlgorithm(GreedyAlgorithm(seed=42)),
+    FirstImprovementAlgorithm(GreedyAlgorithm(seed=42)),
     ExactAlgorithm(time_limit=30.0),
 ]
 

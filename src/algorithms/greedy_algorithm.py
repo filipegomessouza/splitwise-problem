@@ -1,7 +1,8 @@
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 import heapq
 import numpy as np
 from src.algorithms.base_algorithm import BaseAlgorithm
+from src.algorithms.random_keys import RandomKeys
 from src.algorithms.run_result import RunResult
 from src.algorithms.solution import Solution
 from src.helpers.direct_transactions import pair_direct_transactions
@@ -10,22 +11,69 @@ from src.instance.instance import Instance
 Transactions = Tuple[np.ndarray, np.ndarray, np.ndarray]
 
 class GreedyAlgorithm(BaseAlgorithm):
+    """Settles everyone in one pass, largest debt against largest credit.
+
+    Also serves as a starting point for a local search, which is what the keys are for.
+    They take no part in the solution -- one heap over every survivor is the whole of the
+    algorithm -- and exist only so that construct can hand out an order.
+    """
+
+    def __init__(self, seed: Optional[int] = None) -> None:
+        self._keys = RandomKeys(seed)
+
     def name(self) -> str:
         return 'greedy'
 
+    @property
+    def random_keys(self) -> Optional[np.ndarray]:
+        return self._keys.keys
+
+    def set_random_keys(self, random_keys: Optional[np.ndarray]) -> None:
+        """Fix the order construct hands out, without touching what run produces.
+
+        The same surface as RandomKeyAlgorithm on purpose: giving both constructors the
+        very same chromosome is what makes the permutation a controlled variable when the
+        two are compared as starting points.
+        """
+        self._keys.set(random_keys)
+
+    def supports(self, instance: Instance) -> bool:
+        return self._keys.fits(len(instance.balances))
+
     def run(self, instance: Instance) -> RunResult:
+        return RunResult(solution=self._settle(instance))
+
+    def construct(self, instance: Instance) -> Tuple[np.ndarray, Solution]:
+        """An order over the survivors, and this algorithm's own solution.
+
+        The pair is deliberately inconsistent: the solution is not what the order decodes
+        to, and no order would decode to it. A decoder cuts wherever a running total
+        repeats, while this settles every survivor as a single group -- reproducing that
+        would take an order in which no proper contiguous block sums to zero, which is a
+        search problem of its own and may have no answer.
+
+        So the order says where a local search should start looking, and the solution says
+        what it has to beat. LocalSearchAlgorithm.improve documents what that costs.
+        """
+        balances = instance.balances
+
+        # pair_direct_transactions rather than the decoder's survivors: PermutationDecoder
+        # is built on this class, and reaching back for it would close an import cycle
+        _, _, _, left = pair_direct_transactions(balances)
+
+        return self._keys.order(len(balances), left), self._settle(instance)
+
+    def _settle(self, instance: Instance) -> Solution:
         payers, receivers, amounts = self.settle(
             np.arange(len(instance.balances)), instance.balances
         )
 
-        solution = Solution(
+        return Solution(
             instance=instance,
             payers=payers,
             receivers=receivers,
             amounts=amounts,
         )
-
-        return RunResult(solution=solution)
 
     def settle(self, people: np.ndarray, balances: np.ndarray) -> Transactions:
         """Settle any set of people whose balances sum to zero.

@@ -50,6 +50,20 @@ class LocalSearchAlgorithm(BaseAlgorithm, ABC):
         """Point run at another starting point, without rebuilding the search."""
         self._constructor = constructor
 
+    def name(self) -> str:
+        """Named after the constructor, because the constructor is half the algorithm.
+
+        Two searches of the same strategy over different constructors are different
+        algorithms and need different columns; a fixed name would have them collide in a
+        report, one quietly overwriting the other.
+        """
+        return f"{self._constructor.name()}_{self.suffix()}"
+
+    @abstractmethod
+    def suffix(self) -> str:
+        """Short tag for this strategy, appended to the constructor's name."""
+        pass
+
     def supports(self, instance: Instance) -> bool:
         return (
             len(instance.balances) <= MAX_PEOPLE
@@ -65,9 +79,19 @@ class LocalSearchAlgorithm(BaseAlgorithm, ABC):
     def improve(self, order: np.ndarray, solution: Solution) -> Tuple[np.ndarray, Solution]:
         """Refine an order until no swap improves it, or max_iterations run out.
 
-        `solution` must be what `order` decodes to -- it is the incumbent, and its fitness
-        is what every neighbour is measured against. Passing it in rather than decoding it
-        here is what keeps a constructor's work from being repeated.
+        `solution` is the incumbent, and its fitness is the bar every neighbour has to
+        clear. Passing it in rather than decoding it here is what keeps a constructor's
+        work from being repeated.
+
+        It need not be what `order` decodes to. A constructor that does not work by
+        decoding -- the greedy -- hands over its own solution, which no order reproduces,
+        and then the bar comes from outside the space being searched. That is deliberate:
+        it makes the search unable to report anything worse than its constructor. What it
+        costs is one guarantee, so what comes back is worth stating exactly:
+
+        - the fitness returned is never above the fitness handed in;
+        - the order returned decodes to the solution returned if and only if the search
+          moved. With no move the pair comes back exactly as it arrived, mismatch and all.
 
         The order comes back alongside the solution because a metaheuristic needs it: the
         refined order is the part worth feeding back into the next chromosome, and it

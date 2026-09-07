@@ -15,8 +15,8 @@ class FirstImprovementAlgorithm(LocalSearchAlgorithm):
     same pairs any more, and skipping them would skip neighbours that were never seen.
     """
 
-    def name(self) -> str:
-        return 'first_improvement'
+    def suffix(self) -> str:
+        return 'fi'
 
     def _accept(
         self,

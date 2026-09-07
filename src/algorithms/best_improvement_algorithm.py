@@ -11,8 +11,8 @@ class BestImprovementAlgorithm(LocalSearchAlgorithm):
     the point of keeping both under the same base.
     """
 
-    def name(self) -> str:
-        return 'best_improvement'
+    def suffix(self) -> str:
+        return 'bi'
 
     def _accept(
         self,

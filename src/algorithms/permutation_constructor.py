@@ -12,8 +12,17 @@ class PermutationConstructor(Protocol):
     """
 
     def construct(self, instance: Instance) -> Tuple[np.ndarray, Solution]:
-        """An order of the instance's survivors, and the solution it decodes to."""
+        """An order of the instance's survivors, and a solution to start from.
+
+        A constructor that works by decoding an order returns the decode of this one. One
+        that does not -- the greedy settles every survivor in a single pass -- returns its
+        own solution instead, and then the pair does not correspond.
+        """
         ...
 
     def supports(self, instance: Instance) -> bool:
+        ...
+
+    def name(self) -> str:
+        """Short identifier, which a search built on this constructor names itself after."""
         ...
