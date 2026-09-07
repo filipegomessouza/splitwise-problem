@@ -22,6 +22,7 @@ class BestImprovementAlgorithm(LocalSearchAlgorithm):
     ) -> Optional[Step]:
         positions = len(order)
         prefixes = evaluator.prefixes(order)
+        balances = evaluator.balances
 
         best: Optional[Tuple[int, int]] = None
         # seeded with the incumbent, so a neighbour has to be strictly better to be kept
@@ -30,8 +31,12 @@ class BestImprovementAlgorithm(LocalSearchAlgorithm):
 
         for i in range(positions - 1):
             prefix = prefixes[i]
+            balance = balances[order[i]]
 
             for j in range(i + 1, positions):
+                if balances[order[j]] == balance:
+                    continue
+
                 candidate_fitness = evaluator.fitness_from(prefix, order, i, j)
 
                 if candidate_fitness < best_fitness:

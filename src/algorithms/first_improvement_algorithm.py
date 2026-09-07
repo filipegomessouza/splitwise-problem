@@ -29,11 +29,18 @@ class FirstImprovementAlgorithm(LocalSearchAlgorithm):
         # built for every position even when the scan returns from the first one: it is one
         # O(n) pass against the O(n^2) neighbourhood it serves
         prefixes = evaluator.prefixes(order)
+        balances = evaluator.balances
 
         for i in range(positions - 1):
             prefix = prefixes[i]
+            balance = balances[order[i]]
 
             for j in range(i + 1, positions):
+                # equal balances swap to the same fitness, so this neighbour cannot win;
+                # see OrderEvaluator.balances
+                if balances[order[j]] == balance:
+                    continue
+
                 candidate_fitness = evaluator.fitness_from(prefix, order, i, j)
 
                 if candidate_fitness < fitness:

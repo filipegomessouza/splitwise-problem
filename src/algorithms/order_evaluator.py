@@ -44,6 +44,10 @@ class OrderEvaluator:
         self._scan = ZeroSumScan(balances)
         self._costs: Dict[FrozenSet[int], int] = {}
 
+    @property
+    def balances(self) -> List[int]:
+        return self._balances
+
     def fitness(self, order: List[int]) -> int:
         """The transaction count of an order, scanned from the start."""
         self._scan.reset()
