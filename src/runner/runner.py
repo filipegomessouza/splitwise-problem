@@ -19,7 +19,10 @@ class Runner:
         rows: List[Row] = []
 
         for instance in self._instances:
-            row: Row = {'people': len(instance.balances)}
+            row: Row = {
+                'n': len(instance.balances),
+                'instance': instance.name,
+            }
 
             for algorithm in self._algorithms:
                 row.update(self._execute(instance, algorithm))
@@ -29,7 +32,7 @@ class Runner:
         return pd.DataFrame(rows, columns=self._columns())
 
     def _columns(self) -> List[str]:
-        return ['people'] + [
+        return ['n', 'instance'] + [
             f"{algorithm.name()}_{metric}"
             for algorithm in self._algorithms
             for metric in algorithm.metrics()
