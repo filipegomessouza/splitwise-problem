@@ -1,3 +1,4 @@
+import json
 import sys
 import time
 from typing import Any, Dict, List, Optional
@@ -11,31 +12,40 @@ Row = Dict[str, Any]
 class Runner:
     """Times every algorithm over every instance, one row per instance."""
 
-    def __init__(self, instances: List[Instance], algorithms: List[BaseAlgorithm]) -> None:
-        self._instances = instances
-        self._algorithms = algorithms
-
-    def run(self) -> pd.DataFrame:
+    def run(
+        self,
+        instances: List[Instance],
+        algorithms: List[BaseAlgorithm],
+        output_path: Optional[str] = None,
+    ) -> pd.DataFrame:
         rows: List[Row] = []
 
-        for instance in self._instances:
+        for instance in instances:
             row: Row = {
                 'n': len(instance.balances),
                 'instance': instance.name,
             }
 
-            for algorithm in self._algorithms:
+            for algorithm in algorithms:
                 print(f'Running {algorithm.name()} on instance {instance.name}')
                 row.update(self._execute(instance, algorithm))
 
             rows.append(row)
+            self._save(rows, output_path)
 
-        return pd.DataFrame(rows, columns=self._columns())
+        return pd.DataFrame(rows, columns=self._columns(algorithms))
 
-    def _columns(self) -> List[str]:
+    def _save(self, rows: List[Row], output_path: Optional[str]) -> None:
+        if output_path is None:
+            return
+
+        with open(output_path, 'w') as file:
+            json.dump(rows, file, indent=2)
+
+    def _columns(self, algorithms: List[BaseAlgorithm]) -> List[str]:
         return ['n', 'instance'] + [
             f"{algorithm.name()}_{metric}"
-            for algorithm in self._algorithms
+            for algorithm in algorithms
             for metric in algorithm.metrics()
         ]
 
