@@ -4,7 +4,10 @@ from src.algorithms.run_result import RunResult
 from src.instance.instance import Instance
 
 # measured for every algorithm, so each one contributes at least this block of columns
-METRICS = ['fitness', 'seconds']
+METRICS = [
+    'fitness',
+    'seconds',
+]
 
 class BaseAlgorithm(ABC):
     @abstractmethod
