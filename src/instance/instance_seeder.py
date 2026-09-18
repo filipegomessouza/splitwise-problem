@@ -31,3 +31,8 @@ class InstanceSeeder:
 
                 file_name = f'n{N:04d}_b{B}_k{K:04d}.txt'
                 instance_factory.create_as_txt(os.path.join('instances', file_name))
+
+        # instance for class instances set benchmark
+        component_sizes = [2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 4, 10, 10, 10, 20, 30, 40, 50, 5, 5, 5, 11, 12, 13, 14, 15, 16, 17, 18, 19, 6, 6, 6, 24]
+        instance_factory = InstanceFactory(N=400, B=1000, component_sizes=component_sizes, seed=SEED)
+        instance_factory.create_as_txt(os.path.join('instances_ufes', 'instancia_splitwise_400_35.txt'))
