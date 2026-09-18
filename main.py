@@ -1,4 +1,3 @@
-import glob
 from src.algorithms.best_improvement_algorithm import BestImprovementAlgorithm
 from src.algorithms.exact_algorithm import ExactAlgorithm
 from src.algorithms.first_improvement_algorithm import FirstImprovementAlgorithm
@@ -8,7 +7,32 @@ from src.instance.instance_reader import InstanceReader
 from src.runner.runner import Runner
 
 SEED = 42
-INSTANCE_PATHS = sorted(glob.glob('instances_ufes_sample/*.txt'), key=lambda path: int(path.split('/')[-1].split('_')[2].split('.')[0]))
+INSTANCE_PATHS = [
+    'instances_ufes/instancia_splitwise_20.txt',
+    'instances_ufes/instancia_splitwise_30.txt',
+    'instances_ufes/instancia_splitwise_50.txt',
+    'instances_ufes/instancia_splitwise_50_8.txt',
+    'instances_ufes/instancia_splitwise_100.txt',
+    'instances_ufes/instancia_splitwise_100_20.txt',
+    'instances_ufes/instancia_splitwise_150.txt',
+    'instances_ufes/instancia_splitwise_150_15.txt',
+    'instances_ufes/instancia_splitwise_200.txt',
+    'instances_ufes/instancia_splitwise_200_80.txt',
+    'instances_ufes/instancia_splitwise_300.txt',
+    'instances_ufes/instancia_splitwise_300_60.txt',
+    'instances_ufes/instancia_splitwise_400.txt',
+    'instances_ufes/instancia_splitwise_400_35.txt',
+    'instances_ufes/instancia_splitwise_500.txt',
+    'instances_ufes/instancia_splitwise_500_188.txt',
+    'instances_ufes/instancia_splitwise_600.txt',
+    'instances_ufes/instancia_splitwise_700.txt',
+    'instances_ufes/instancia_splitwise_800.txt',
+    'instances_ufes/instancia_splitwise_900.txt',
+    'instances_ufes/instancia_splitwise_1000.txt',
+    'instances_ufes/instancia_splitwise_1100.txt',
+    'instances_ufes/instancia_splitwise_1300.txt',
+    'instances_ufes/instancia_splitwise_1500.txt',
+]
 
 instance_reader = InstanceReader()
 instances = [instance_reader.read_with_index(path) for path in INSTANCE_PATHS]
@@ -23,7 +47,4 @@ algorithms = [
     # ExactAlgorithm(time_limit=30.0),
 ]
 
-results = Runner(instances, algorithms).run()
-
-with open('results/results.txt', 'w') as file:
-    file.write(results.to_string(index=False))
+Runner().run(instances, algorithms, output_path='results/results.json')
