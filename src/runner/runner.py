@@ -6,6 +6,7 @@ import pandas as pd
 from src.algorithms.base_algorithm import BaseAlgorithm
 from src.algorithms.run_result import RunResult
 from src.instance.instance import Instance
+from src.helpers.date import now
 
 Row = Dict[str, Any]
 
@@ -20,6 +21,9 @@ class Runner:
     ) -> pd.DataFrame:
         rows: List[Row] = []
 
+        print(f'[{now()}] Starting runs')
+        print()
+
         for instance in instances:
             row: Row = {
                 'n': len(instance.balances),
@@ -27,11 +31,14 @@ class Runner:
             }
 
             for algorithm in algorithms:
-                print(f'Running {algorithm.name()} on instance {instance.name}')
+                print(f'[{now()}] {instance.name} - {algorithm.name()}')
                 row.update(self._execute(instance, algorithm))
 
+            print()
             rows.append(row)
             self._save(rows, output_path)
+
+        print(f'[{now()}] Finished all runs')
 
         return pd.DataFrame(rows, columns=self._columns(algorithms))
 
