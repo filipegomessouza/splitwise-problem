@@ -25,6 +25,7 @@ class Runner:
             }
 
             for algorithm in self._algorithms:
+                print(f'Running {algorithm.name()} on instance {instance.name}')
                 row.update(self._execute(instance, algorithm))
 
             rows.append(row)
