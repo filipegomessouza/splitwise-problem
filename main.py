@@ -7,22 +7,23 @@ from src.algorithms.random_key_algorithm import RandomKeyAlgorithm
 from src.instance.instance_reader import InstanceReader
 from src.runner.runner import Runner
 
-# the seeder zero-pads the people count, so sorting the paths sorts by instance size
-INSTANCE_PATHS = sorted(glob.glob('instances/*.txt'))
+SEED = 42
+INSTANCE_PATHS = sorted(glob.glob('instances_ufes_sample/*.txt'), key=lambda path: int(path.split('/')[-1].split('_')[2].split('.')[0]))
 
 instance_reader = InstanceReader()
+instances = [instance_reader.read_with_index(path) for path in INSTANCE_PATHS]
 
-instances = [instance_reader.read(path) for path in INSTANCE_PATHS]
 algorithms = [
     GreedyAlgorithm(),
-    RandomKeyAlgorithm(seed=42),
-    BestImprovementAlgorithm(RandomKeyAlgorithm(seed=42)),
-    FirstImprovementAlgorithm(RandomKeyAlgorithm(seed=42)),
-    BestImprovementAlgorithm(GreedyAlgorithm(seed=42)),
-    FirstImprovementAlgorithm(GreedyAlgorithm(seed=42)),
-    ExactAlgorithm(time_limit=30.0),
+    RandomKeyAlgorithm(seed=SEED),
+    BestImprovementAlgorithm(RandomKeyAlgorithm(seed=SEED)),
+    FirstImprovementAlgorithm(RandomKeyAlgorithm(seed=SEED)),
+    BestImprovementAlgorithm(GreedyAlgorithm(seed=SEED)),
+    FirstImprovementAlgorithm(GreedyAlgorithm(seed=SEED)),
+    # ExactAlgorithm(time_limit=30.0),
 ]
 
 results = Runner(instances, algorithms).run()
 
-print(results.to_string(index=False))
+with open('results/results.txt', 'w') as file:
+    file.write(results.to_string(index=False))
