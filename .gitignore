@@ -3,7 +3,5 @@ __pycache__/
 venv/
 output/
 instances/
-instances_ufes/
-instances_ufes_sample/
 results/
 gurobi.env
