@@ -1,4 +1,5 @@
 import json
+import os
 import sys
 import time
 from typing import Any, Dict, List, Optional
@@ -45,6 +46,11 @@ class Runner:
     def _save(self, rows: List[Row], output_path: Optional[str]) -> None:
         if output_path is None:
             return
+
+        directory = os.path.dirname(output_path)
+
+        if directory:
+            os.makedirs(directory, exist_ok=True)
 
         with open(output_path, 'w') as file:
             json.dump(rows, file, indent=2)
