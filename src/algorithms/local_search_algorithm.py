@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import List, Optional, Tuple
 import numpy as np
-from src.algorithms.base_algorithm import BaseAlgorithm
+from src.algorithms.base_algorithm import METRICS, BaseAlgorithm
 from src.algorithms.order_evaluator import OrderEvaluator
 from src.algorithms.permutation_constructor import PermutationConstructor
 from src.algorithms.permutation_decoder import PermutationDecoder
@@ -70,13 +70,16 @@ class LocalSearchAlgorithm(BaseAlgorithm, ABC):
             and self._constructor.supports(instance)
         )
 
+    def metrics(self) -> List[str]:
+        return METRICS + ['iterations']
+
     def run(self, instance: Instance) -> RunResult:
         order, solution = self._constructor.construct(instance)
-        _, improved = self.improve(order, solution)
+        _, iterations, improved = self.improve(order, solution)
 
-        return RunResult(solution=improved)
+        return RunResult(solution=improved, iterations=iterations)
 
-    def improve(self, order: np.ndarray, solution: Solution) -> Tuple[np.ndarray, Solution]:
+    def improve(self, order: np.ndarray, solution: Solution) -> Tuple[np.ndarray, int, Solution]:
         """Refine an order until no swap improves it, or max_iterations run out.
 
         `solution` is the incumbent, and its fitness is the bar every neighbour has to
@@ -116,6 +119,7 @@ class LocalSearchAlgorithm(BaseAlgorithm, ABC):
 
         while self._max_iterations is None or iterations < self._max_iterations:
             accepted = self._accept(evaluator, positions, fitness)
+            iterations += 1
 
             # no neighbour beat the incumbent: this order is a local optimum for swaps
             if accepted is None:
@@ -123,14 +127,13 @@ class LocalSearchAlgorithm(BaseAlgorithm, ABC):
 
             positions, fitness = accepted
             moved = True
-            iterations += 1
 
         if not moved:
-            return order, solution
+            return order, iterations, solution
 
-        improved = np.array(positions, dtype=np.int64)
+        order = np.array(positions, dtype=np.int64)
 
-        return improved, self._decoder.decode(instance, improved)
+        return order, iterations, self._decoder.decode(instance, order)
 
     @abstractmethod
     def _accept(

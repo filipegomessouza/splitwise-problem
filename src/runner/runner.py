@@ -74,6 +74,7 @@ class Runner:
             'fitness': result.solution.fitness if result is not None else None,
             'seconds': seconds,
             'proven': result.proven if result is not None else None,
+            'iterations': result.iterations if result is not None else None,
         }
 
         # an algorithm that declares a metric nobody measures fails loudly here, rather

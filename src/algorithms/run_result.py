@@ -14,3 +14,4 @@ class RunResult:
     """
     solution: Solution
     proven: Optional[bool] = None
+    iterations: Optional[int] = None
