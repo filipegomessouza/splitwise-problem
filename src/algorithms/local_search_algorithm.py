@@ -13,7 +13,7 @@ from src.instance.instance import Instance
 # iteration grows as n^3. The evaluator took the constant down by about an order of
 # magnitude, not the exponent, so the 1000-person instances stay out of reach until a
 # neighbour can be scored without scanning the tail of the order
-MAX_PEOPLE = 500
+MAX_PEOPLE = None
 
 # a swapped order and what it scores, which is what every step passes around
 Step = Tuple[List[int], int]
@@ -66,7 +66,7 @@ class LocalSearchAlgorithm(BaseAlgorithm, ABC):
 
     def supports(self, instance: Instance) -> bool:
         return (
-            len(instance.balances) <= MAX_PEOPLE
+            MAX_PEOPLE is None or len(instance.balances) <= MAX_PEOPLE
             and self._constructor.supports(instance)
         )
 
