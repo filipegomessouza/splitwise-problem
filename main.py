@@ -7,6 +7,8 @@ from src.instance.instance_reader import InstanceReader
 from src.runner.runner import Runner
 
 SEED = 42
+MAX_WORKERS = 8
+
 INSTANCE_PATHS = [
     'instances_ufes/instancia_splitwise_20.txt',
     'instances_ufes/instancia_splitwise_30.txt',
@@ -42,17 +44,23 @@ INSTANCE_PATHS = [
     'instances_ufes/instancia_splitwise_1500.txt',
 ]
 
-instance_reader = InstanceReader()
-instances = [instance_reader.read_with_index(path) for path in INSTANCE_PATHS]
+if __name__ == '__main__':
+    instance_reader = InstanceReader()
+    instances = [instance_reader.read_with_index(path) for path in INSTANCE_PATHS]
 
-algorithms = [
-    GreedyAlgorithm(),
-    RandomKeyAlgorithm(seed=SEED),
-    BestImprovementAlgorithm(RandomKeyAlgorithm(seed=SEED)),
-    FirstImprovementAlgorithm(RandomKeyAlgorithm(seed=SEED)),
-    BestImprovementAlgorithm(GreedyAlgorithm(seed=SEED)),
-    FirstImprovementAlgorithm(GreedyAlgorithm(seed=SEED)),
-    # ExactAlgorithm(time_limit=30.0),
-]
+    algorithms = [
+        GreedyAlgorithm(),
+        RandomKeyAlgorithm(seed=SEED),
+        BestImprovementAlgorithm(RandomKeyAlgorithm(seed=SEED)),
+        FirstImprovementAlgorithm(RandomKeyAlgorithm(seed=SEED)),
+        BestImprovementAlgorithm(GreedyAlgorithm(seed=SEED)),
+        FirstImprovementAlgorithm(GreedyAlgorithm(seed=SEED)),
+        # ExactAlgorithm(time_limit=30.0),
+    ]
 
-Runner().run(instances, algorithms, output_path='results/results.json')
+    Runner().run(
+        instances,
+        algorithms,
+        output_path='results/results.json',
+        max_workers=MAX_WORKERS,
+    )
