@@ -1,6 +1,7 @@
 import os
 from typing import Any, Callable, Dict, List, Optional
 import matplotlib
+import pandas as pd
 
 # nothing here opens a window, and importing an interactive backend would fail outright
 # on a machine without a display
@@ -73,6 +74,11 @@ class Analysis:
         plt.close(figure)
 
         return file_path
+
+    def results_table(self, rows: List[Row]) -> pd.DataFrame:
+        """Every result as a table, one row per instance, in the same order the charts use.
+        """
+        return pd.DataFrame(self._ordered(rows))
 
     def _ordered(self, rows: List[Row]) -> List[Row]:
         return sorted(rows, key=lambda row: (row['n'], row['instance']))
