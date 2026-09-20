@@ -51,7 +51,7 @@ class Analysis:
             )
 
         axes.set_title(title)
-        axes.set_xlabel('Instância')
+        axes.set_xlabel('Instance')
 
         if y_label is not None:
             axes.set_ylabel(y_label)
