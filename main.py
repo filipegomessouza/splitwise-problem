@@ -7,7 +7,7 @@ from src.instance.instance_reader import InstanceReader
 from src.runner.runner import Runner
 
 SEED = 42
-MAX_WORKERS = 8
+MAX_WORKERS = 4
 
 INSTANCE_PATHS = [
     'instances_ufes/instancia_splitwise_20.txt',
