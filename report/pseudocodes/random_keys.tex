@@ -1,0 +1,19 @@
+\begin{algorithmic}[1]
+    \INPUT  Balances vector $b[1..n]$, indexed by person, with $\sum_{p=1}^{n} b[p] = 0$.
+    \OUTPUT Set of transactions $T$.
+
+    \State $(T_{\text{pairs}}, L) \leftarrow \texttt{PairExactMatches}(b)$ \Comment{$L$: people left with a nonzero balance}
+    \State $T \leftarrow T_{\text{pairs}}$
+
+    \State draw $r[p] \sim U(0,1)$ for each $p \in L$
+    \State $\pi \leftarrow$ sort $L$ by $r[p]$, ascending
+
+    \State $\mathcal{G} \leftarrow \texttt{ZeroSumGroups}(\pi, b)$ \Comment{partition $\pi$ into disjoint groups, each summing to zero}
+
+    \ForAll{$g \in \mathcal{G}$}
+    \State $T \leftarrow T \cup \texttt{Greedy}(g, b)$
+    \EndFor
+
+    \State \Return $T$
+
+\end{algorithmic}

@@ -1,0 +1,29 @@
+\begin{algorithmic}[1]
+    \INPUT  Balances vector $b[1..n]$, indexed by person, with $\sum_{p=1}^{n} b[p] = 0$.
+    \OUTPUT Set of transactions $T$.
+
+    \State $(T_{\text{pairs}}, L) \leftarrow \texttt{PairExactMatches}(b)$ \Comment{$L$: people left with a nonzero balance}
+    \State $T \leftarrow T_{\text{pairs}}$
+
+    \State $\textit{Debtors} \leftarrow \{p \in L : b[p] < 0\}$, $\textit{Creditors} \leftarrow \{p \in L : b[p] > 0\}$
+
+    \While{$\textit{Debtors} \neq \emptyset$ \textbf{and} $\textit{Creditors} \neq \emptyset$}
+        \State $debtor \leftarrow \arg\max_{p \in \textit{Debtors}} (-b[p])$
+        \State $creditor \leftarrow \arg\max_{p \in \textit{Creditors}} (b[p])$
+        \State $amount \leftarrow \min(-b[debtor],\, b[creditor])$
+
+        \State $T \leftarrow T \cup \{(debtor, creditor, amount)\}$
+        \State $b[debtor] \leftarrow b[debtor] + amount$
+        \State $b[creditor] \leftarrow b[creditor] - amount$
+
+        \If{$b[debtor] = 0$}
+            \State $\textit{Debtors} \leftarrow \textit{Debtors} \setminus \{debtor\}$
+        \EndIf
+        \If{$b[creditor] = 0$}
+            \State $\textit{Creditors} \leftarrow \textit{Creditors} \setminus \{creditor\}$
+        \EndIf
+    \EndWhile
+
+    \State \Return $T$
+
+\end{algorithmic}

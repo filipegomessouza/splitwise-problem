@@ -1,0 +1,332 @@
+% modelo beamer
+% http://latexbr.blogspot.com.br/
+% aspectratio=169 - modo widescreen
+\documentclass[aspectratio=169,mathserif]{beamer}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[english]{babel}
+\usepackage{graphics,amssymb,amsfonts,amsmath}
+
+\usepackage{algorithm,algpseudocode}
+\usepackage{indentfirst}
+
+\usepackage[skip=-2pt]{caption}
+%\captionsetup{font={stretch=0.6,small}}
+
+\usepackage{graphicx}
+\usepackage{subfig}
+\usepackage{array,multirow}
+%\usepackage{listings}
+\usepackage{tikz}
+\usepackage{color}
+\usepackage{enumerate,hyperref}
+%\usepackage{palatino}	% Fonte sem serifa
+\usepackage{ragged2e}	% Paragrafo justificado
+%\usepackage{minted}	% Highlight para codigos de programacao
+\usepackage{booktabs} % tabelas
+\usepackage[round,sort]{natbib}
+%\usepackage{lipsum}
+\usepackage{tcolorbox}
+\usepackage{verbatim}
+%\usepackage[alf]{abntex2cite}
+\usepackage{float}
+%\usepackage{subcaption}
+
+\algnewcommand\algorithmicinput{\textbf{Input:}}
+\algnewcommand\INPUT{\item[\algorithmicinput]}
+
+\algnewcommand\algorithmicoutput{\textbf{Output:}}
+\algnewcommand\OUTPUT{\item[\algorithmicoutput]}
+
+\usetheme[height=7mm]{Rochester}
+\setbeamertemplate{items}[default]
+\setbeamertemplate{blocks}[rounded][shadow=true]
+\setbeamertemplate{navigation symbols}{}
+\AtBeginSection[]{\frame{\frametitle{Outline}\tableofcontents[current]}}
+
+
+%\usetheme{Pittsburgh}
+\usecolortheme{orchid}
+\usefonttheme[onlymath]{serif}
+%\usepackage{multimedia}
+\usepackage[3D]{movie15} % adiciona esse pacote no preâmbulo
+\usepackage[labelformat=empty]{caption}
+\definecolor{mygreen}  {HTML}{A0C307}
+\definecolor{mygreen2} {HTML}{E5F694}
+\definecolor{myblue}   {HTML}{37ADC9}
+\definecolor{myblue2}  {HTML}{B9D9E1}
+\definecolor{myorange} {HTML}{FF8110}
+\definecolor{myorange2}{HTML}{FFCC67}
+\definecolor{mypink}   {HTML}{FF4B9C}
+\definecolor{mypink2}  {HTML}{FFC5DF}
+\definecolor{darkgreen}  {HTML}{008000}
+\usepackage{pgfkeys}
+\usepackage{tikz}
+
+% Colocando numero de paginas no slide
+\setbeamertemplate{footline}[frame number]
+
+% Desativando os botoes de navegacao
+\beamertemplatenavigationsymbolsempty
+
+
+% Tela cheia
+%\hypersetup{pdfpagemode=FullScreen}
+
+% Layout da pagina
+\hypersetup{pdfpagelayout=SinglePage}
+
+% Definicao de novos ambientes
+%\theoremstyle{Definition}
+\newtheorem{definicao}{Defini\c c\~ao}
+\newtheorem{exemplo}{Exemplo}
+\newtheorem{proposicao}{Proposição}
+\newtheorem{teo}[theorem]{Teorema}
+\newcommand{\xbf}{\boldsymbol{x}}
+\newcommand{\ybf}{\boldsymbol{y}}
+% Definicao de novos comandos
+\providecommand{\sin}{} \renewcommand{\sin}{\hspace{2pt}\textrm{sen}}
+\providecommand{\tan}{} \renewcommand{\tan}{\hspace{2pt}\textrm{tg}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\betabf}{\boldsymbol{\beta}}
+\newcommand{\I}{\textbf{I}}
+\newcommand{\K}{\textbf{k}}
+\newcommand{\sen}{\mathrm{\ sen}}
+% Capa - requer o TikZ
+\newcommand{\capa}{
+  \begin{tikzpicture}[remember picture,overlay]
+    \node at (current page.south west);
+      %{\begin{tikzpicture}[remember picture, overlay]
+        \fill[shading=radial,top color=blue,bottom color=white,middle color=white]
+          (0,0) rectangle (\paperwidth,\paperheight);
+      %\end{tikzpicture}
+      %}
+  \end{tikzpicture}
+}
+
+\setbeamersize{text margin left=10pt,text margin right=10pt}
+
+% Titulo
+
+\title[\sc{footnote}]{Constructive and Local Search Heuristics \vspace{0.2cm} \\ for the Splitwise Problem}
+\author[]{
+    \textbf{\color{orange} Filipe Gomes Arante de Souza}\\
+}
+
+\date{Metaheuristics 2026/2, UFES, September, 2026}
+\institute[]{filipe.gomes.arante@gmail.com} % opcional
+
+
+% \institute{Universidade Federal do Espírito Santo} % opcional
+%\date{}
+
+% ==============================================================================
+% Formatação do Slide de Capa
+% ==============================================================================
+\pgfdeclareimage[width=\paperwidth]{planodefundo}{Figuras/capa}
+\setbeamerfont{subtitle}{size=\scriptsize}
+\setbeamertemplate{title page}{
+\begin{picture}(0,0)
+  \put(-28.5,-153){%
+    \pgfuseimage{planodefundo}
+  }
+  \put(0,-75){%
+    \begin{minipage}[b][4.5cm][t]{0.75\textwidth}
+    \color{white}
+    \usebeamerfont{title}
+      {{\color{white}\large\textbf{\inserttitle}}\\[0.2cm]}
+      {{\color{white}\normalsize\textbf{\insertsubtitle}}\\[1.5cm]}
+    \usebeamerfont{subtitle}
+      {\insertauthor\\[0.5cm]}
+      {\insertinstitute\\[0.3cm]}
+      {\tiny{\insertdate}}
+  \end{minipage}
+  }
+\end{picture}
+}
+
+\begin{document}
+
+\begin{frame}[plain]
+    \titlepage
+\end{frame}
+
+\part{Main Part}
+\frame{\frametitle{Outline}\tableofcontents[part=1]}
+
+\section{Splitwise Problem}
+
+\begin{frame}
+    \frametitle{Splitwise Problem}
+    \begin{block}{Definition}
+        Given a set of $n$ people and a balance vector $B = (b_1, ..., b_n)$, where $b_i > 0$ means person $i$ should receive money, $b_i < 0$ means person $i$ owes money, and $b_i = 0$ means no transaction is needed for that person, with $\sum_{i=0}^{n} b_i = 0$, the objective is to find the minimum number of transactions $(i, j, v)$, where person $i$ pays $v$ units to person $j$ such that everyone ends up settled.
+    \end{block}
+\end{frame}
+
+% \begin{frame}
+%    \frametitle{Example with figure}
+%    \begin{figure}
+%        \centering
+%        \includegraphics[height=3.8cm, width=6cm]{Figuras/Menezes2017.eps}
+%        \caption{\tiny{{\bf Source:} Menezes et al. A branch and price algorithm to solve the integrated production  planning and scheduling in bulk ports, European Journal of Operational Research, 2017.}}
+%    \end{figure}
+% \end{frame}
+
+\section{Greedy Constructive Algorithm}
+
+\foreach \n in {1,...,8} {
+        \begin{frame}{Greedy Constructive Algorithm}
+            \centering
+            \includegraphics[width=\textwidth]{images/step_by_step_greedy/greedy_0\n.eps}
+        \end{frame}
+    }
+
+\begin{frame}
+    \frametitle{Greedy Constructive Algorithm}
+    \begin{itemize}
+        \item People with \textbf{exactly opposite balances} are paired off directly (one transaction each)
+        \item The rest are settled by repeatedly matching the \textbf{largest debtor against the largest creditor}
+        \item Each match cancels at least one side's balance completely, so it never revisits a settled person
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{Greedy Constructive Algorithm}
+    \begin{columns}
+        \column{0.02\textwidth}
+        \column{0.98\textwidth}
+        \footnotesize{\input{pseudocodes/greedy}}
+    \end{columns}
+\end{frame}
+
+
+\section {Random Keys Based Constructive Algorithm}
+
+\foreach \n in {1,...,13} {
+        \begin{frame}{Random Keys Based Constructive Algorithm}
+            \centering
+            \includegraphics[width=\textwidth]{images/step_by_step_random_keys/rk_\n.eps}
+        \end{frame}
+    }
+
+\begin{frame} \frametitle{Random Keys Based Constructive Algorithm}
+    \begin{itemize}
+        \item Each person gets a \textbf{random key} (a number in $[0,1]$)
+        \item People are \textbf{sorted} by their key $\rightarrow$ produces a random permutation $\pi$
+        \item $\pi$ is scanned and partitioned into \textbf{zero-sum groups} via running partial sums
+        \item Each group is \textbf{settled independently} by the greedy method
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{Random Keys Based Constructive Algorithm}
+    \begin{columns}
+        \column{0.02\textwidth}
+        \column{0.98\textwidth}
+        \footnotesize{\input{pseudocodes/random_keys}}
+    \end{columns}
+\end{frame}
+
+\section{Local Search}
+
+\begin{frame}{Local Search}
+    \begin{itemize}
+        \item Starts from a solution and its respective order $\pi$
+        \item The neighborhood is every \textbf{swap of two people's positions} in $\pi$
+        \item Movements are \textbf{performed into $\pi$}
+        \item Neighbor solutions are computed using \textbf{random key constructive algorithm}
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{Best Improvement}
+    \begin{columns}
+        \column{0.02\textwidth}
+        \column{0.98\textwidth}
+        \footnotesize{\input{pseudocodes/best_improvement}}
+    \end{columns}
+\end{frame}
+
+\begin{frame}{First Improvement}
+    \begin{columns}
+        \column{0.02\textwidth}
+        \column{0.98\textwidth}
+        \footnotesize{\input{pseudocodes/first_improvement}}
+    \end{columns}
+\end{frame}
+
+\section{Experiments}
+
+\begin{frame}{Experiments}
+    \begin{block}{Instances}
+        $32$ instances with balances from $20$ to $1500$ people. Each of them contains several subsets with sum $0$ and were built by the students in the course.
+    \end{block}
+\end{frame}
+
+\begin{frame}{Experiments}
+    \begin{itemize}
+        \item Instances with sizes ranging from $20$ to $900$ were run on a Google Colaboratory environment, to allow comparison between the students implementations.
+        \item Instances with size over $900$ were run on a computer equipped with an AMD Ryzen 7 9700X processor running at 3.8GHz (5.5GHz Turbo), 32GB 6000MHz RAM, and the Ubuntu 24.04 operating system for deadline reasons.
+        \item All source code was implemented in Python 3.12.3.
+    \end{itemize}
+\end{frame}
+
+\section{Results}
+
+\begin{frame}{Results}
+    \input{tables/results1}
+\end{frame}
+
+\begin{frame}{Results}
+    \input{tables/results2}
+\end{frame}
+
+\begin{frame}{Results}
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.8\textwidth]{graphics/fitness_greedy.eps}
+    \end{figure}
+\end{frame}
+
+\begin{frame}{Results}
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.8\textwidth]{graphics/fitness_random_key.eps}
+    \end{figure}
+\end{frame}
+
+\section{Conclusions}
+
+\begin{frame}{Conclusions about constructive algorithms}
+    \begin{itemize}
+        \item 19 victories for greedy approach
+        \item 9 victories for random keys approach
+        \item 4 ties
+        \item 0.4\% relative gap
+        \item Both are really fast, running in insignificant time
+        \item \textbf{Obs:} random keys algorithm was executed just once. It would be interesting analyse its behavior in many runs
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{Conclusions about local searches}
+    \begin{itemize}
+        \item Starting from \textbf{greedy algorithm}: 10 victories for BI, 8 victories for FI and 14 ties
+        \item Starting from \textbf{random key algorithm}: 12 victories for BI, 11 victories for FI and 9 ties
+        \item \textbf{Random key + BI}: 13479s, 270 iterations
+        \item \textbf{Random key + FI}: 11247s, 526 iterations
+        \item \textbf{Greedy + BI}: 13468s, 268 iterations
+        \item \textbf{Random key + BI}: 11582s, 485 iterations
+        \item Equivalent results, but \textbf{FI strategy is faster than BI strategy} and performs about \textbf{double the iterations}
+        \item BI strategy obtained same result in all instances except two of them. The result \textbf{converges independently the initial solution}
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+    \begin{center}
+        {\huge \bf \color{mypink} Thank you!} \\ \vspace{1cm}
+        \begin{tabular}{cc}
+            Filipe Gomes Arante de Souza               \\
+            {\bf \small filipe.gomes.arante@gmail.com} \\
+        \end{tabular}
+    \end{center}
+\end{frame}
+\end{document}
+
+

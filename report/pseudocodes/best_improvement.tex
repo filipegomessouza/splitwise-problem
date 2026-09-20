@@ -1,0 +1,28 @@
+\begin{algorithmic}[1]
+    \INPUT  Set of transactions $T$, order $\pi = (\pi_1, \dots, \pi_n)$ of the people, balances vector $b[1..n]$.
+    \OUTPUT Locally optimal set of transactions $T^\star$ and its order $\pi^\star$.
+
+    \State $T^\star \leftarrow T$
+    \State $\pi^\star \leftarrow \pi$
+    \State $\textit{improved} \leftarrow \textbf{true}$
+
+    \While{\textit{improved}}
+        \State $\textit{improved} \leftarrow \textbf{false}$
+
+        \For{$i \leftarrow 1$ \textbf{to} $n - 1$}
+            \For{$j \leftarrow i + 1$ \textbf{to} $n$}
+                \State $\pi' \leftarrow \texttt{Swap}(\pi^\star, i, j)$
+                \State $T' \leftarrow \texttt{Decode}(\pi', b)$
+
+                \If{$f(T') < f(T^\star)$}
+                    \State $T^\star \leftarrow T'$
+                    \State $\pi^\star \leftarrow \pi'$
+                    \State $\textit{improved} \leftarrow \textbf{true}$
+                \EndIf
+            \EndFor
+        \EndFor
+    \EndWhile
+
+    \State \Return $(T^\star, \pi^\star)$
+
+\end{algorithmic}
