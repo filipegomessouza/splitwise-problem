@@ -1,7 +1,7 @@
 import json
 from src.analysis.analysis import Analysis
 
-RESULTS_PATH = 'results/results.json'
+RESULTS_PATH = 'results/all_results.json'
 INSTANCE_PREFIX = 'instancia_splitwise_'
 
 GREEDY_FITNESS = {
@@ -27,8 +27,8 @@ print(analysis.plot_results(
     rows,
     GREEDY_FITNESS,
     title='Results - Greedy Construction',
-    file_path='output/fitness_greedy.png',
-    y_label='Transações',
+    file_path='output/fitness_greedy.eps',
+    y_label='Transactions',
     format_instance=short_name,
 ))
 
@@ -36,7 +36,7 @@ print(analysis.plot_results(
     rows,
     RANDOM_KEY_FITNESS,
     title='Results - Random Key Construction',
-    file_path='output/fitness_random_key.png',
-    y_label='Transações',
+    file_path='output/fitness_random_key.eps',
+    y_label='Transactions',
     format_instance=short_name,
 ))
