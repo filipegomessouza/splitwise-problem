@@ -1,8 +1,6 @@
 from typing import Tuple
 import numpy as np
 
-EMPTY = np.empty(0, dtype=np.int64)
-
 Pairing = Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]
 
 def pair_direct_transactions(balances: np.ndarray) -> Pairing:
@@ -52,7 +50,7 @@ def _sort_by_amount(people: np.ndarray, amounts: np.ndarray) -> Tuple[np.ndarray
 def _rank_within_amount(amounts: np.ndarray) -> np.ndarray:
     """Position of each person among the people sharing its amount, counting from 0."""
     if amounts.size == 0:
-        return EMPTY
+        return np.empty(0, dtype=np.int64)
 
     starts = np.flatnonzero(np.concatenate(([True], amounts[1:] != amounts[:-1])))
     counts = np.diff(np.append(starts, amounts.size))
