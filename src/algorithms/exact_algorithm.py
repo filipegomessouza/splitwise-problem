@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Tuple
 import gurobipy as gp
 import numpy as np
 from src.algorithms.base_algorithm import METRICS, BaseAlgorithm
@@ -60,46 +60,9 @@ class ExactAlgorithm(BaseAlgorithm):
 
             return RunResult(solution=solution, proven=True)
 
-        owed = -balance[payers]
-        due = balance[receivers]
+        transfers, indicators, proven = self._solve(payers, receivers, left, balance)
 
-        # silenced from the environment up, otherwise the license banner escapes before
-        # a model-level OutputFlag could take effect
-        env = gp.Env(empty=True)
-        env.setParam('OutputFlag', 1 if self._verbose else 0)
-        env.start()
-
-        model = gp.Model("splitwise", env=env)
-
-        if self._time_limit is not None:
-            model.Params.TimeLimit = self._time_limit
-
-        # rows are payers and columns receivers; non-negativity rides on lb=0
-        X = model.addMVar((payers.size, receivers.size), lb=0.0, name="X")
-        Y = model.addMVar((payers.size, receivers.size), vtype=gp.GRB.BINARY, name="Y")
-
-        model.setObjective(Y.sum(), sense=gp.GRB.MINIMIZE)
-
-        model.addConstr(X.sum(axis=1) == owed, name="payer_constraints")
-        model.addConstr(X.sum(axis=0) == due, name="receiver_constraints")
-
-        # no transfer can exceed what the payer owes nor what the receiver is due. Taking
-        # the smaller of the two, rather than the receiver's alone, is what makes the LP
-        # relaxation open at least one transfer per person by itself
-        model.addConstr(X <= np.minimum.outer(owed, due) * Y, name="link_constraints")
-
-        self._start_from_greedy(X, Y, payers, receivers, left, balance)
-
-        model.optimize()
-
-        status = STATUS_NAMES.get(model.Status, f"status_{model.Status}")
-
-        # reading .X without an incumbent raises an opaque AttributeError
-        if model.SolCount == 0:
-            raise RuntimeError(f"no feasible solution found (status: {status})")
-
-        transfers = X.X
-        transferred = (Y.X > 0.5) & (transfers > TRANSFER_TOLERANCE)
+        transferred = (indicators > 0.5) & (transfers > TRANSFER_TOLERANCE)
         rows, columns = np.nonzero(transferred)
 
         solution = Solution(
@@ -109,9 +72,62 @@ class ExactAlgorithm(BaseAlgorithm):
             amounts=np.concatenate((paired_amounts, transfers[transferred])),
         )
 
-        # anything short of OPTIMAL means the objective is an incumbent: an upper bound
-        # that may or may not be the optimum, with no way to tell from here
-        return RunResult(solution=solution, proven=model.Status == gp.GRB.OPTIMAL)
+        return RunResult(solution=solution, proven=proven)
+
+    def _solve(
+        self,
+        payers: np.ndarray,
+        receivers: np.ndarray,
+        left: np.ndarray,
+        balance: np.ndarray,
+    ) -> Tuple[np.ndarray, np.ndarray, bool]:
+        """The solver's transfers and indicators, and whether they are a proven optimum.
+
+        Model and environment are disposed on the way out rather than left to the garbage
+        collector, so a process that solves one instance after another never carries an
+        earlier solve's native memory -- or its license session -- into the next one.
+        What comes back is plain numpy, copied out before the model goes away.
+        """
+        owed = -balance[payers]
+        due = balance[receivers]
+
+        # silenced from the environment up, otherwise the license banner escapes before
+        # a model-level OutputFlag could take effect
+        with gp.Env(empty=True) as env:
+            env.setParam('OutputFlag', 1 if self._verbose else 0)
+            env.start()
+
+            with gp.Model("splitwise", env=env) as model:
+                if self._time_limit is not None:
+                    model.Params.TimeLimit = self._time_limit
+
+                # rows are payers and columns receivers; non-negativity rides on lb=0
+                X = model.addMVar((payers.size, receivers.size), lb=0.0, name="X")
+                Y = model.addMVar((payers.size, receivers.size), vtype=gp.GRB.BINARY, name="Y")
+
+                model.setObjective(Y.sum(), sense=gp.GRB.MINIMIZE)
+
+                model.addConstr(X.sum(axis=1) == owed, name="payer_constraints")
+                model.addConstr(X.sum(axis=0) == due, name="receiver_constraints")
+
+                # no transfer can exceed what the payer owes nor what the receiver is due.
+                # Taking the smaller of the two, rather than the receiver's alone, is what
+                # makes the LP relaxation open at least one transfer per person by itself
+                model.addConstr(X <= np.minimum.outer(owed, due) * Y, name="link_constraints")
+
+                self._start_from_greedy(X, Y, payers, receivers, left, balance)
+
+                model.optimize()
+
+                status = STATUS_NAMES.get(model.Status, f"status_{model.Status}")
+
+                # reading .X without an incumbent raises an opaque AttributeError
+                if model.SolCount == 0:
+                    raise RuntimeError(f"no feasible solution found (status: {status})")
+
+                # anything short of OPTIMAL means the objective is an incumbent: an upper
+                # bound that may or may not be the optimum, with no way to tell from here
+                return X.X, Y.X, model.Status == gp.GRB.OPTIMAL
 
     def _start_from_greedy(
         self,

@@ -7,7 +7,7 @@ from src.instance.instance_reader import InstanceReader
 from src.runner.runner import Runner
 
 SEED = 42
-MAX_WORKERS = 4
+MAX_WORKERS = 1
 
 INSTANCE_PATHS = [
     'instances_ufes/instancia_splitwise_20.txt',
@@ -55,7 +55,7 @@ if __name__ == '__main__':
         FirstImprovementAlgorithm(RandomKeyAlgorithm(seed=SEED)),
         BestImprovementAlgorithm(GreedyAlgorithm(seed=SEED)),
         FirstImprovementAlgorithm(GreedyAlgorithm(seed=SEED)),
-        # ExactAlgorithm(time_limit=30.0),
+        # ExactAlgorithm(time_limit=600.0, verbose=True),
     ]
 
     Runner().run(
