@@ -2,7 +2,7 @@ from typing import List
 import numpy as np
 from src.algorithms.greedy_algorithm import GreedyAlgorithm
 from src.algorithms.solution import Solution
-from src.algorithms.zero_sum_scan import ZeroSumScan
+from src.algorithms.zero_sum_scan import zero_sum_groups
 from src.helpers.direct_transactions import pair_direct_transactions
 from src.instance.instance import Instance
 
@@ -42,8 +42,8 @@ class PermutationDecoder:
         per neighbour of an O(n^2) neighbourhood is no place to re-derive it.
 
         The pairing is repeated on every call even though it never changes, which keeps the
-        decoder stateless and reentrant. It is fully vectorised, while the cuts and the
-        greedy are sequential Python -- so it is not what this costs.
+        decoder stateless and reentrant. It is fully vectorised, while the greedy is
+        sequential Python -- so it is not what this costs.
         """
         balances = instance.balances
 
@@ -81,17 +81,20 @@ class PermutationDecoder:
     def zero_sum_groups(self, balances: np.ndarray, order: np.ndarray) -> List[np.ndarray]:
         """Split the people, in the given order, into groups whose balances sum to zero.
 
-        Runs a ZeroSumScan from end to end and collects what it closes; the cuts themselves
-        are defined there, once, so that a search scoring neighbours and this cannot drift
-        into disagreeing about where a group ends.
+        The cuts themselves are defined once, in zero_sum_scan, on the very primitive the
+        local search scores neighbours with, so that the two cannot drift into disagreeing
+        about where a group ends.
         """
-        scan = ZeroSumScan(balances)
+        members, ends = zero_sum_groups(
+            np.ascontiguousarray(balances, dtype=np.int64),
+            np.ascontiguousarray(order, dtype=np.int64),
+        )
+
         groups: List[np.ndarray] = []
+        start = 0
 
-        for person in order.tolist():
-            group = scan.add(person)
-
-            if group is not None:
-                groups.append(np.array(group, dtype=np.int64))
+        for end in ends.tolist():
+            groups.append(members[start:end])
+            start = end
 
         return groups

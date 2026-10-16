@@ -1,6 +1,4 @@
-from typing import List, Optional
-from src.algorithms.local_search_algorithm import LocalSearchAlgorithm, Step
-from src.algorithms.order_evaluator import OrderEvaluator
+from src.algorithms.local_search_algorithm import LocalSearchAlgorithm
 
 class FirstImprovementAlgorithm(LocalSearchAlgorithm):
     """Moves to the first neighbour that improves on the incumbent, or stops.
@@ -18,32 +16,5 @@ class FirstImprovementAlgorithm(LocalSearchAlgorithm):
     def suffix(self) -> str:
         return 'fi'
 
-    def _accept(
-        self,
-        evaluator: OrderEvaluator,
-        order: List[int],
-        fitness: int,
-    ) -> Optional[Step]:
-        positions = len(order)
-
-        # built for every position even when the scan returns from the first one: it is one
-        # O(n) pass against the O(n^2) neighbourhood it serves
-        prefixes = evaluator.prefixes(order)
-        balances = evaluator.balances
-
-        for i in range(positions - 1):
-            prefix = prefixes[i]
-            balance = balances[order[i]]
-
-            for j in range(i + 1, positions):
-                # equal balances swap to the same fitness, so this neighbour cannot win;
-                # see OrderEvaluator.balances
-                if balances[order[j]] == balance:
-                    continue
-
-                candidate_fitness = evaluator.fitness_from(prefix, order, i, j)
-
-                if candidate_fitness < fitness:
-                    return self._swap(order, i, j), candidate_fitness
-
-        return None
+    def _stops_at_first(self) -> bool:
+        return True
