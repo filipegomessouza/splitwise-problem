@@ -1,6 +1,6 @@
 from typing import Optional, Tuple
 import numpy as np
-from src.algorithms.zero_sum_scan import best_swap
+from src.algorithms.zero_sum_scan import best_swap, order_fitness
 from src.helpers.direct_transactions import pair_direct_transactions
 from src.instance.instance import Instance
 
@@ -48,6 +48,14 @@ class OrderEvaluator:
             size=self._balances.size,
             dtype=np.int64,
             endpoint=True,
+        )
+
+    def fitness(self, order: np.ndarray) -> int:
+        """What decoding `order` scores, as a transaction count and nothing else."""
+        return order_fitness(
+            self._balances,
+            np.ascontiguousarray(order, dtype=np.int64),
+            self._pairs,
         )
 
     def best_swap(self, order: np.ndarray, fitness: int, first: bool) -> Optional[Swap]:

@@ -450,3 +450,158 @@ def best_swap(
         base_length = closed
 
     return best_i, best_j, best_fitness
+
+@njit(
+    'int64(int64[::1], int64[::1], int64)',
+    cache=True,
+)
+def order_fitness(balances: np.ndarray, order: np.ndarray, pairs: int) -> int:
+    """What PermutationDecoder.decode(order) scores, without building the solution.
+
+    The same cuts as zero_sum_groups, each group counted the way settle_largest_first
+    settles it, plus the `pairs` the pairing settled before any of this. Scoring an order
+    needs the count and nothing else, so none of the arrays a decode hands back are made.
+    """
+    members, ends = zero_sum_groups(balances, order)
+
+    owes = np.empty(order.size, np.int64)
+    dues = np.empty(order.size, np.int64)
+
+    fitness = pairs
+    start = 0
+
+    for end in ends:
+        fitness += _count_largest_first(balances, members, start, end, owes, dues)
+        start = end
+
+    return fitness
+
+@njit(
+    'Tuple((int64, int64[::1]))(int64[::1])',
+    cache=True,
+)
+def max_zero_sum_parts(values: np.ndarray) -> Tuple[int, np.ndarray]:
+    """The most parts summing to zero that `values` splits into, and an order realising it.
+
+    `values` must sum to zero. Settling a set of m people takes m - k transactions at best,
+    k being this count, so it is the exact optimum of the set.
+
+    A DP over subsets: the most zero-sum parts closed by placing exactly `mask`, one more
+    whenever `mask` itself sums to zero. The order returned lists the parts as consecutive
+    blocks. 2^m states, so it is meant for a couple of dozen values at most.
+    """
+    size = values.size
+    full = 1 << size
+
+    sums = np.zeros(full, np.int64)
+    parts = np.full(full, -1, np.int64)
+    placed_last = np.zeros(full, np.int64)
+    parts[0] = 0
+
+    for mask in range(1, full):
+        lowest = mask & -mask
+        bit = 0
+
+        while (1 << bit) != lowest:
+            bit += 1
+
+        sums[mask] = sums[mask ^ lowest] + values[bit]
+
+        best = -1
+        last = -1
+
+        for index in range(size):
+            if mask & (1 << index) and parts[mask ^ (1 << index)] > best:
+                best = parts[mask ^ (1 << index)]
+                last = index
+
+        parts[mask] = best + (1 if sums[mask] == 0 else 0)
+        placed_last[mask] = last
+
+    order = np.empty(size, np.int64)
+    mask = full - 1
+
+    for position in range(size - 1, -1, -1):
+        index = placed_last[mask]
+        order[position] = index
+        mask ^= 1 << index
+
+    return parts[full - 1], order
+
+@njit(
+    'UniTuple(int64, 3)(int64[::1], int64[::1], int64[::1], int64[::1], int64[::1], int64)',
+    cache=True,
+)
+def first_merge(
+    balances: np.ndarray,
+    members: np.ndarray,
+    starts: np.ndarray,
+    ends: np.ndarray,
+    costs: np.ndarray,
+    max_size: int,
+) -> Tuple[int, int, int]:
+    """The first pair of groups whose union settles for less than both cost; i is -1 if none.
+
+    Groups are members[starts[g]:ends[g]] and cost costs[g]. Pairs run (0, 0), (0, 1), ...,
+    and j == i stands for group i alone. A union over `max_size` people is skipped, since
+    the exact count is exponential in it. Returns i, j and how many transactions it saves.
+    """
+    groups = starts.size
+
+    for i in range(groups):
+        for j in range(i, groups):
+            size = ends[i] - starts[i]
+            current = costs[i]
+
+            if j != i:
+                size += ends[j] - starts[j]
+                current += costs[j]
+
+            # every part has two people at least, so even the best split cannot win
+            if size > max_size or size - size // 2 >= current:
+                continue
+
+            values = np.empty(size, np.int64)
+            filled = 0
+
+            for position in range(starts[i], ends[i]):
+                values[filled] = balances[members[position]]
+                filled += 1
+
+            if j != i:
+                for position in range(starts[j], ends[j]):
+                    values[filled] = balances[members[position]]
+                    filled += 1
+
+            parts, _ = max_zero_sum_parts(values)
+
+            if size - parts < current:
+                return i, j, current - (size - parts)
+
+    return -1, -1, 0
+
+@njit(
+    'Tuple((boolean[::1], int64[::1]))(int64[::1], int64)',
+    cache=True,
+)
+def subset_sums(values: np.ndarray, limit: int) -> Tuple[np.ndarray, np.ndarray]:
+    """Which sums up to `limit` some subset of the positive `values` adds up to.
+
+    Alongside, the index of the value that first reached each sum, which is what lets a
+    subset be read back: from s, step to s - values[first[s]], until 0. Only the sums are
+    kept, never the subsets, so the work is values times limit and not 2^values.
+    """
+    reachable = np.zeros(limit + 1, np.bool_)
+    first = np.full(limit + 1, -1, np.int64)
+    reachable[0] = True
+
+    for index in range(values.size):
+        value = values[index]
+
+        # descending, so that a sum reached with this value is not extended by it again
+        for total in range(limit, value - 1, -1):
+            if not reachable[total] and reachable[total - value]:
+                reachable[total] = True
+                first[total] = index
+
+    return reachable, first

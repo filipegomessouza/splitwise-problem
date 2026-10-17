@@ -8,11 +8,13 @@ GREEDY_FITNESS = {
     'greedy_fitness': 'Greedy',
     'greedy_bi_fitness': 'Best Improvement',
     'greedy_fi_fitness': 'First Improvement',
+    'brkga_vnd_fitness': 'BRKGA + VND',
 }
 RANDOM_KEY_FITNESS = {
     'random_key_fitness': 'Random Keys',
     'random_key_bi_fitness': 'Best Improvement',
     'random_key_fi_fitness': 'First Improvement',
+    'brkga_vnd_fitness': 'BRKGA + VND',
 }
 
 def short_name(instance: str) -> str:

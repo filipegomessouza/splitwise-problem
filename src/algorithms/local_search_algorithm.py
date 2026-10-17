@@ -1,11 +1,10 @@
 from abc import ABC, abstractmethod
-from typing import List, Optional, Tuple
+from typing import Optional, Tuple
 import numpy as np
-from src.algorithms.base_algorithm import METRICS, BaseAlgorithm
+from src.algorithms.improvement_algorithm import ImprovementAlgorithm
 from src.algorithms.order_evaluator import OrderEvaluator
 from src.algorithms.permutation_constructor import PermutationConstructor
 from src.algorithms.permutation_decoder import PermutationDecoder
-from src.algorithms.run_result import RunResult
 from src.algorithms.solution import Solution
 from src.instance.instance import Instance
 
@@ -14,7 +13,7 @@ from src.instance.instance import Instance
 # by about an order of magnitude -- never the exponent
 MAX_PEOPLE = None
 
-class LocalSearchAlgorithm(BaseAlgorithm, ABC):
+class LocalSearchAlgorithm(ImprovementAlgorithm, ABC):
     """Improves an order by swapping two people at a time, until nothing gets better.
 
     The neighbourhood is every swap of positions (i, j), i < j: O(n^2) orders, each scored
@@ -32,49 +31,18 @@ class LocalSearchAlgorithm(BaseAlgorithm, ABC):
 
     def __init__(
         self,
-        constructor: PermutationConstructor,
+        constructor: Optional[PermutationConstructor] = None,
         max_iterations: Optional[int] = None,
     ) -> None:
-        self._constructor = constructor
+        super().__init__(constructor)
         self._max_iterations = max_iterations
         self._decoder = PermutationDecoder()
 
-    @property
-    def constructor(self) -> PermutationConstructor:
-        return self._constructor
-
-    def set_constructor(self, constructor: PermutationConstructor) -> None:
-        """Point run at another starting point, without rebuilding the search."""
-        self._constructor = constructor
-
-    def name(self) -> str:
-        """Named after the constructor, because the constructor is half the algorithm.
-
-        Two searches of the same strategy over different constructors are different
-        algorithms and need different columns; a fixed name would have them collide in a
-        report, one quietly overwriting the other.
-        """
-        return f"{self._constructor.name()}_{self.suffix()}"
-
-    @abstractmethod
-    def suffix(self) -> str:
-        """Short tag for this strategy, appended to the constructor's name."""
-        pass
-
     def supports(self, instance: Instance) -> bool:
         return (
-            MAX_PEOPLE is None or len(instance.balances) <= MAX_PEOPLE
-            and self._constructor.supports(instance)
+            (MAX_PEOPLE is None or len(instance.balances) <= MAX_PEOPLE)
+            and super().supports(instance)
         )
-
-    def metrics(self) -> List[str]:
-        return METRICS + ['iterations']
-
-    def run(self, instance: Instance) -> RunResult:
-        order, solution = self._constructor.construct(instance)
-        _, iterations, improved = self.improve(order, solution)
-
-        return RunResult(solution=improved, iterations=iterations)
 
     def improve(self, order: np.ndarray, solution: Solution) -> Tuple[np.ndarray, int, Solution]:
         """Refine an order until no swap improves it, or max_iterations run out.

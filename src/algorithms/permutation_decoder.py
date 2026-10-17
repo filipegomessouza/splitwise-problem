@@ -78,6 +78,17 @@ class PermutationDecoder:
             amounts=np.concatenate(amounts),
         )
 
+    def group_cost(self, balances: np.ndarray, group: np.ndarray) -> int:
+        """How many transactions decode settles `group` in, for one of zero_sum_groups'.
+
+        What a search that rearranges groups has to beat, group by group: the greedy can
+        settle a group in fewer than its size minus one when it holds a smaller zero-sum
+        set, so the size alone would overstate it.
+        """
+        payers, _, _ = self._greedy.settle_largest_first(group, balances[group])
+
+        return len(payers)
+
     def zero_sum_groups(self, balances: np.ndarray, order: np.ndarray) -> List[np.ndarray]:
         """Split the people, in the given order, into groups whose balances sum to zero.
 

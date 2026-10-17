@@ -1,8 +1,12 @@
 from src.algorithms.best_improvement_algorithm import BestImprovementAlgorithm
+from src.algorithms.brkga_algorithm import BrkgaAlgorithm
 from src.algorithms.exact_algorithm import ExactAlgorithm
 from src.algorithms.first_improvement_algorithm import FirstImprovementAlgorithm
 from src.algorithms.greedy_algorithm import GreedyAlgorithm
+from src.algorithms.merge_search_algorithm import MergeSearchAlgorithm
 from src.algorithms.random_key_algorithm import RandomKeyAlgorithm
+from src.algorithms.split_search_algorithm import SplitSearchAlgorithm
+from src.algorithms.vnd_algorithm import VndAlgorithm
 from src.instance.instance_reader import InstanceReader
 from src.runner.runner import Runner
 
@@ -55,6 +59,11 @@ if __name__ == '__main__':
         FirstImprovementAlgorithm(RandomKeyAlgorithm(seed=SEED)),
         BestImprovementAlgorithm(GreedyAlgorithm(seed=SEED)),
         FirstImprovementAlgorithm(GreedyAlgorithm(seed=SEED)),
+        # BRKGA, then a descent over split, merge and first-improvement swaps, cheapest first
+        VndAlgorithm(
+            BrkgaAlgorithm(seed=SEED),
+            [SplitSearchAlgorithm(), MergeSearchAlgorithm(), FirstImprovementAlgorithm()],
+        ),
         # ExactAlgorithm(time_limit=600.0, verbose=True),
     ]
 
